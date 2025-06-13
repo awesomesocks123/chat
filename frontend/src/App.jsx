@@ -5,7 +5,7 @@ import { HomePage } from "./pages/HomePage";
 import SignUpPage from "./pages/SignUpPage";
 import { LoginPage } from "./pages/LoginPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { ProfilePage } from "./pages/ProfilePage";
+import ProfilePage from "./pages/ProfilePage.jsx";
 import { useAuthStore } from "./store/useAuthStore.js";
 import { useEffect } from "react";
 import { Loader } from "lucide-react";
