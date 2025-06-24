@@ -1,7 +1,90 @@
 @import "tailwindcss";
+
+/* Define custom themes FIRST */
+@import "tailwindcss";
+
+/* Extend built-in light theme */
+@import "tailwindcss";
+
+/* 🌞 Light theme */
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  prefersdark: false;
+  extends: light;
+
+  --color-primary: #bed292;
+  --color-primary-content: #191919;
+
+  --color-secondary: #e1eacd;
+  --color-secondary-content: #191919;
+
+  --color-accent: #f7fee7;
+  --color-accent-content: #191919;
+}
+
+/* 🌚 Dark theme with flipped content colors */
+@plugin "daisyui/theme" {
+  name: "dark";
+  default: false;
+  prefersdark: true;
+  extends: dark;
+
+  --color-primary: #bed292; /* med-green */
+  --color-primary-content: #191919;
+
+  --color-secondary: #e1eacd; /* light-green */
+  --color-secondary-content: #191919;
+
+  --color-accent: #f7fee7; /* lighter-green */
+  --color-accent-content: #191919;
+
+  --color-neutral: #474747; /* light-grey */
+  --color-neutral-content: #f7fee7;
+
+  --color-base-100: #191919; /* nav-black background */
+  --color-base-200: #313131; /* dark-grey */
+  --color-base-300: #474747; /* light-grey */
+  --color-base-content: #eaeaea; /* off-white text */
+
+  --radius-box: 0.5rem;
+  --radius-btn: 0.5rem;
+  --radius-badge: 1rem;
+  --radius-input: 0.375rem;
+}
+/* Register all themes properly in an array */
 @plugin "daisyui" {
-  themes: light --default, dark --prefersdark, cupcake, bumblebee, emerald,
-    corporate, synthwave, retro, cyberpunk, valentine, halloween, garden, forest,
-    aqua, lofi, pastel, fantasy, wireframe, black, luxury, dracula, cmyk, autumn,
-    business, acid, lemonade, night, coffee, winter, dim, nord, sunset;
+  themes:
+    mylight --default,
+    mydark --prefersdark,
+    cupcake,
+    bumblebee,
+    emerald,
+    corporate,
+    synthwave,
+    retro,
+    cyberpunk,
+    valentine,
+    halloween,
+    garden,
+    forest,
+    aqua,
+    lofi,
+    pastel,
+    fantasy,
+    wireframe,
+    black,
+    luxury,
+    dracula,
+    cmyk,
+    autumn,
+    business,
+    acid,
+    lemonade,
+    night,
+    coffee,
+    winter,
+    dim,
+    nord,
+    sunset;
 }
