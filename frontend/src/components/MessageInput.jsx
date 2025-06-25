@@ -82,7 +82,7 @@ const MessageInput = () => {
 
           <button
             type="button"
-            className={`hidden sm:flex btn btn-square
+            className={`hidden sm:flex btn btn-soft
                      ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -99,7 +99,7 @@ const MessageInput = () => {
         <button
           type="submit"
           disabled={!canSend}
-          className={`btn btn-square transition-all duration-200
+          className={`btn btn-soft transition-all duration-200
                       ${canSend ? "text-primary animate-pulse" : "text-zinc-400"}
                     `}
         >
