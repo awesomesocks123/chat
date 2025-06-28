@@ -25,14 +25,12 @@ const ChatContainer = () => {
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div id="messages-container" className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
           <div
             key={message._id}
             className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
           >
-            {/* Remove the old chat-header with time */}
-
             <div className="chat-bubble flex flex-col">
               {message.image && (
                 <img
@@ -43,7 +41,6 @@ const ChatContainer = () => {
               )}
               {message.text && <p>{message.text}</p>}
             </div>
-
             <div className="chat-footer opacity-50 text-[10px] mt-1">
               {new Date(message.createdAt).toLocaleTimeString("en-US", {
                 hour: "numeric",
@@ -52,6 +49,7 @@ const ChatContainer = () => {
             </div>
           </div>
         ))}
+        <div id="anchor" className="h-px" />
       </div>
       <MessageInput />
     </div>

@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+#messages-container * {
+  overflow-anchor: none;
+}
+
+#anchor {
+  overflow-anchor: auto;
+}
