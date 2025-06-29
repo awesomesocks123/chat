@@ -38,9 +38,9 @@ const ProfilePage = () => {
               <label
                 htmlFor="avatar-upload"
                 className={`
-                  absolute bottom-0 right-0 bg-base-content 
-                  hover:scale-105 p-2 rounded-full cursor-pointer 
-                  transition-all duration-200 
+                  absolute bottom-0 right-0 bg-base-content
+                  hover:scale-105 p-2 rounded-full cursor-pointer
+                  transition-all duration-200
                   ${
                     isUpdatingProfile ? "animate-pulse pointer-events-none" : ""
                   }`}
@@ -92,11 +92,11 @@ const ProfilePage = () => {
               </div>
               <div className="flex items-center justify-between py-2">
                 <span>Account Status</span>
-                <span className="flex items-center gap-2 text-green-500">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </span>
+                <span className="flex items-center gap-2">
+                  <div class="inline-grid *:[grid-area:1/1]">
+                    <div class="status status-success animate-ping"></div>
+                    <div class="status status-success"></div>
+                  </div>{" "}
                   Online
                 </span>
               </div>
