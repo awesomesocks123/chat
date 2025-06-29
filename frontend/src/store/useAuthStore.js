@@ -65,10 +65,14 @@ export const useAuthStore = create((set,get) => ({
       query: {
         userId: authUser._id,
       },
-      
     })
+
     socket.connect();
     set({ socket: socket }); 
+
+    socket.on("getOnlineUsers", (usersIds) => {
+      set({ onlineUsers: usersIds });
+    })
   },
   disconnectSocket: () => {
     if (get().socket?.connected) get().socket.disconnect();
