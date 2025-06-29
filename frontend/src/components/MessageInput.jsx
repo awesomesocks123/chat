@@ -3,19 +3,31 @@ import { useChatStore } from "../store/useChatStore";
 import { Image, Plus, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 
+const MAX_IMAGE_SIZE_MB = 5; // 5MB limit
+
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [imageError, setImageError] = useState("");
   const fileInputRef = useRef(null);
   const { sendMessage } = useChatStore();
-  const canSend = text.trim() || imagePreview;
+  const canSend = (text.trim() || imagePreview) && !imageError;
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
+      setImageError("Invalid file type");
       return;
     }
+    if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+      const msg = `Image is too big (max ${MAX_IMAGE_SIZE_MB}MB)`;
+      toast.error(msg);
+      setImageError(msg);
+      return;
+    }
+    // clear any previous error
+    setImageError("");
 
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -49,7 +61,7 @@ const MessageInput = () => {
   };
 
   return (
-    <div className="p-4 w-full border-t border-base-300">
+    <div className="p-4 w-full border-t border-base-300 bg-base-100">
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">
@@ -69,41 +81,36 @@ const MessageInput = () => {
           </div>
         </div>
       )}
+      {imageError && (
+        <p className="text-xs text-error mb-3">{imageError}</p>
+      )}
 
-      <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-        <div className="flex-1 flex gap-3">
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={handleImageChange}
-          />
+      <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+        <input
+          type='file'
+          accept='image/*'
+          className='hidden'
+          ref={fileInputRef}
+          onChange={handleImageChange}
+        />
 
-          <button
-            type="button"
-            className={`hidden sm:flex btn btn-soft
-                     ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Plus size={20} />
-          </button>
-          <input
-            type="text"
-            className="w-full input input-bordered rounded-lg input-sm sm:input-md"
-            placeholder="Type a message..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-        </div>
         <button
-          type="submit"
-          disabled={!canSend}
-          className={`btn btn-soft transition-all duration-200
-                      ${canSend ? "text-primary animate-pulse" : "text-zinc-400"}
-                    `}
+          type='button'
+          className={`btn btn-ghost btn-circle ${imagePreview ? "text-emerald-500" : ""}`}
+          onClick={() => fileInputRef.current?.click()}
         >
-          <Send size={22} />
+          <Plus size={20} />
+        </button>
+
+        <input
+          type='text'
+          className='input input-bordered flex-1 text-sm h-10'
+          placeholder='Type a message...'
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <button type='submit' disabled={!canSend} className='btn btn-primary animate-pulse h-10 min-h-0'>
+          <Send size={18} />
         </button>
       </form>
     </div>

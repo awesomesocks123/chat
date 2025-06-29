@@ -26,30 +26,43 @@ const ChatContainer = () => {
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
       <div id="messages-container" className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message._id}
-            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
-          >
-            <div className="chat-bubble flex flex-col">
-              {message.image && (
-                <img
-                  src={message.image}
-                  alt="Attachment"
-                  className="sm:max-w-[200px] rounded-md mb-2"
-                />
-              )}
-              {message.text && <p>{message.text}</p>}
+        {messages.map((message) => {
+          const isSent = message.senderId === authUser._id;
+          return (
+            <div
+              key={message._id}
+              className={`flex ${isSent ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`
+                  max-w-[80%] rounded-xl p-3 shadow-sm
+                  ${isSent ? "bg-primary text-primary-content" : "bg-base-200"}
+                `}
+              >
+                {message.image && (
+                  <img
+                    src={message.image}
+                    alt='Attachment'
+                    className='sm:max-w-[200px] rounded-md mb-2'
+                  />
+                )}
+                {message.text && <p className='text-sm'>{message.text}</p>}
+                <p
+                  className={`
+                    text-[10px] mt-1.5
+                    ${isSent ? "text-primary-content/70" : "text-base-content/70"}
+                  `}
+                >
+                  {new Date(message.createdAt).toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
             </div>
-            <div className="chat-footer opacity-50 text-[10px] mt-1">
-              {new Date(message.createdAt).toLocaleTimeString("en-US", {
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </div>
-          </div>
-        ))}
-        <div id="anchor" className="h-px" />
+          );
+        })}
+        <div id='anchor' className='h-px' />
       </div>
       <MessageInput />
     </div>

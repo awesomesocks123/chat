@@ -39,9 +39,14 @@ export const useChatStore = create((set,get) => ({
         set({messages:[...messages,res.data]})
 
     } catch (error) {
-      toast.error(error.response.data.messages);
-
-    }
+       let message = "Failed to send message";
+       if (error.response?.status === 413 || error.message?.includes("413") || error.message === "Network Error") {
+         message = "Image is too big to upload. Please select a smaller image.";
+       } else if (error.response?.data?.messages) {
+         message = error.response.data.messages;
+       }
+       toast.error(message);
+     }
   },
   //todo optimze this one later
   setSelectedUser: async (selectedUser) => set({ selectedUser }),
