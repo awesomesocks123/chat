@@ -3,44 +3,44 @@ import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
-
+import { Users, MessagesSquare, Shuffle } from "lucide-react";
 // Simple function to format time ago
 const formatTimeAgo = (date) => {
   // Check if date is valid
   if (!date || isNaN(date.getTime())) {
-    console.warn('Invalid date provided to formatTimeAgo:', date);
-    return 'just now';
+    console.warn("Invalid date provided to formatTimeAgo:", date);
+    return "just now";
   }
-  
+
   try {
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
-    
-    if (diffInSeconds < 60) return 'just now';
-    
+
+    if (diffInSeconds < 60) return "just now";
+
     const diffInMinutes = Math.floor(diffInSeconds / 60);
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    
+
     const diffInHours = Math.floor(diffInMinutes / 60);
     if (diffInHours < 24) return `${diffInHours}h ago`;
-    
+
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d ago`;
-    
+
     // Use a safer date formatting approach
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   } catch (error) {
-    console.error('Error formatting time ago:', error);
-    return 'just now';
+    console.error("Error formatting time ago:", error);
+    return "just now";
   }
 };
 
 const SideBar = () => {
-  const { 
-    getUsers, 
-    users, 
-    selectedUser, 
-    setSelectedUser, 
+  const {
+    getUsers,
+    users,
+    selectedUser,
+    setSelectedUser,
     isUsersLoading,
     getFriends,
     friends,
@@ -52,14 +52,13 @@ const SideBar = () => {
     chatSessions,
     getChatSessions,
     getMessages,
-    selectedChatSession
+    selectedChatSession,
   } = useChatStore();
-  
+
   const { authUser } = useAuthStore();
   const [isRandomLoading, setIsRandomLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [onlineUsers, setOnlineUsers] = useState([]);
-  
 
   useEffect(() => {
     getUsers();
@@ -67,21 +66,21 @@ const SideBar = () => {
     getActiveChats();
     getChatSessions();
   }, [getUsers, getFriends, getActiveChats, getChatSessions]);
-  
+
   // Listen for online users from socket
   useEffect(() => {
     const socket = useAuthStore.getState().socket;
-    
+
     if (socket) {
       // Listen for online users updates
       socket.on("getOnlineUsers", (users) => {
         console.log("Online users:", users);
         setOnlineUsers(users);
       });
-      
+
       // Request online users on mount
       socket.emit("getOnlineUsers");
-      
+
       return () => {
         socket.off("getOnlineUsers");
       };
@@ -94,9 +93,14 @@ const SideBar = () => {
     try {
       const randomUser = await getRandomUser();
       console.log("Random user returned to SideBar:", randomUser);
-      
+
       if (randomUser && randomUser.fullName) {
-        console.log("Found user with name:", randomUser.fullName, "ID:", randomUser._id);
+        console.log(
+          "Found user with name:",
+          randomUser.fullName,
+          "ID:",
+          randomUser._id
+        );
         toast.success(`Connected with ${randomUser.fullName}`);
       } else if (randomUser) {
         console.log("Found user but missing name:", randomUser);
@@ -149,14 +153,14 @@ const SideBar = () => {
             onClick={() => setViewMode("chats")}
             className={`btn btn-sm ${viewMode === "chats" ? "btn-primary" : "btn-ghost"}`}
           >
-            <i className="i-message-square-text"></i>
+            <MessagesSquare className="w-4 h-4" />
             Chats
           </button>
           <button
             onClick={() => setViewMode("friends")}
             className={`btn btn-sm ${viewMode === "friends" ? "btn-primary" : "btn-ghost"}`}
           >
-            <i className="i-users"></i>
+            <Users className="w-4 h-4" />
             Friends
           </button>
         </div>
@@ -165,7 +169,7 @@ const SideBar = () => {
           onClick={handleRandomChat}
           disabled={isRandomLoading}
         >
-          {!isRandomLoading && <i className="i-shuffle"></i>}
+          <Shuffle className="w-4 h-4" />
         </button>
       </div>
 
@@ -179,7 +183,7 @@ const SideBar = () => {
         />
         <i className="i-search absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50"></i>
       </div>
-      
+
       <div className="overflow-y-auto flex-1">
         {viewMode === "chats" ? (
           // Display chat sessions
@@ -190,25 +194,28 @@ const SideBar = () => {
                 const otherUser = session.participants?.find(
                   (user) => user?._id !== authUser?._id
                 );
-                return otherUser?.fullName?.toLowerCase().includes(searchTerm.toLowerCase());
+                return otherUser?.fullName
+                  ?.toLowerCase()
+                  .includes(searchTerm.toLowerCase());
               })
               .map((session) => {
                 const isSelected = selectedChatSession?._id === session._id;
-                
+
                 // Find the other user in the participants if otherUser is not set
                 let otherUser = session.otherUser;
                 if (!otherUser && session.participants) {
-                  otherUser = session.participants.find(
-                    user => user?._id !== authUser?._id
-                  ) || {};
+                  otherUser =
+                    session.participants.find(
+                      (user) => user?._id !== authUser?._id
+                    ) || {};
                 }
-                
+
                 // Skip rendering if we can't determine the other user
                 if (!otherUser) {
                   console.log("Missing otherUser for session:", session);
                   return null;
                 }
-                
+
                 return (
                   <div
                     key={session._id}
@@ -228,9 +235,12 @@ const SideBar = () => {
                         <div className="font-medium truncate">
                           {otherUser.fullName || "User"}
                         </div>
-                        {otherUser && otherUser._id && Array.isArray(onlineUsers) && onlineUsers.includes(otherUser._id) && 
-                          <div className="badge badge-xs badge-success" />
-                        }
+                        {otherUser &&
+                          otherUser._id &&
+                          Array.isArray(onlineUsers) &&
+                          onlineUsers.includes(otherUser._id) && (
+                            <div className="badge badge-xs badge-success" />
+                          )}
                       </div>
                       {session.lastMessage && (
                         <p className="text-xs text-base-content/70 truncate">
@@ -240,8 +250,11 @@ const SideBar = () => {
                     </div>
                     {session.lastMessage && (
                       <div className="text-xs text-base-content/50">
-                        {session.lastMessage.createdAt && !isNaN(new Date(session.lastMessage.createdAt))
-                          ? formatTimeAgo(new Date(session.lastMessage.createdAt))
+                        {session.lastMessage.createdAt &&
+                        !isNaN(new Date(session.lastMessage.createdAt))
+                          ? formatTimeAgo(
+                              new Date(session.lastMessage.createdAt)
+                            )
                           : "Just now"}
                       </div>
                     )}
@@ -249,36 +262,40 @@ const SideBar = () => {
                 );
               })
           ) : (
-            <p className="text-center text-base-content/50 mt-4">No active chats</p>
+            <p className="text-center text-base-content/50 mt-4">
+              No active chats
+            </p>
           )
-        ) : (
-          // Display friends
-          Array.isArray(friends) && friends.length > 0 ? (
-            friends
-              .filter((user) => user?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()))
-              .map((user) => (
-                <div
-                  key={user._id}
-                  className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-base-200 ${selectedUser?._id === user._id ? "bg-base-200" : ""}`}
-                  onClick={() => handleUserSelect(user)}
-                >
-                  <div className="avatar">
-                    <div className="w-12 rounded-full">
-                      <img
-                        src={user.profilePic || "/avatar.png"}
-                        alt={user.fullName}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">{user.fullName}</h3>
-                    <p className="text-xs text-base-content/70">{user.email}</p>
+        ) : // Display friends
+        Array.isArray(friends) && friends.length > 0 ? (
+          friends
+            .filter((user) =>
+              user?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .map((user) => (
+              <div
+                key={user._id}
+                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-base-200 ${selectedUser?._id === user._id ? "bg-base-200" : ""}`}
+                onClick={() => handleUserSelect(user)}
+              >
+                <div className="avatar">
+                  <div className="w-12 rounded-full">
+                    <img
+                      src={user.profilePic || "/avatar.png"}
+                      alt={user.fullName}
+                    />
                   </div>
                 </div>
-              ))
-          ) : (
-            <p className="text-center text-base-content/50 mt-4">No friends yet</p>
-          )
+                <div>
+                  <h3 className="font-medium">{user.fullName}</h3>
+                  <p className="text-xs text-base-content/70">{user.email}</p>
+                </div>
+              </div>
+            ))
+        ) : (
+          <p className="text-center text-base-content/50 mt-4">
+            No friends yet
+          </p>
         )}
       </div>
     </div>
