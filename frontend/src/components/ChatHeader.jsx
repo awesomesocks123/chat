@@ -21,11 +21,18 @@ const ChatHeader = () => {
           {/* User Info */}
           <div>
             <h3 className="font-medium">{selectedUser.fullName}</h3>
-            <p className="text-sm text-base-content/70">
-              {(onlineUsers ?? []).includes(selectedUser?._id)
-                ? "Online"
-                : "Offline"}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <div className={`${(onlineUsers ?? []).includes(selectedUser?._id) 
+                ? "status status-md status-success animate-pulse" 
+                : "status status-md status-gray-500 opacity-50"}` }></div>
+              <p className={`text-xs ${(onlineUsers ?? []).includes(selectedUser?._id) 
+                ? "text-success font-medium" 
+                : "text-base-content/50"}`}>
+                {(onlineUsers ?? []).includes(selectedUser?._id)
+                  ? "Online"
+                  : "Offline"}
+              </p>
+            </div>
           </div>
         </div>
         {/* X button to close out */}
