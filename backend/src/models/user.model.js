@@ -20,6 +20,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    friends: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+      default: [],
+    },
+    activeChats: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+      default: [],
+    },
   },
   { timestamps: true }
 );

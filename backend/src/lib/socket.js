@@ -14,21 +14,50 @@ const io = new Server (server, {
 export function getReceiverSocketId(userId) {
   return userSocketMap[userId];
 }
+
 // store online users
 const userSocketMap = {}; // userId: socketId
 
+// Store active chat sessions for each user
+const userChatSessions = {}; // userId: [sessionIds]
 
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
   const userId = socket.handshake.query.userId;
-  if(userId) userSocketMap[userId] = socket.id;
+  
+  if(userId) {
+    userSocketMap[userId] = socket.id;
+    
+    // Join rooms for all active chat sessions
+    if (userChatSessions[userId]) {
+      userChatSessions[userId].forEach(sessionId => {
+        socket.join(`chat_session_${sessionId}`);
+      });
+    }
+  }
+  
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
-  socket.on("disconnect", ()=> {
-    console.log("A user disconnected", socket.id)
+  // Handle joining a chat session
+  socket.on("joinChatSession", (sessionId) => {
+    console.log(`User ${userId} joining chat session ${sessionId}`);
+    socket.join(`chat_session_${sessionId}`);
+    
+    // Track this session for the user
+    if (!userChatSessions[userId]) {
+      userChatSessions[userId] = [];
+    }
+    if (!userChatSessions[userId].includes(sessionId)) {
+      userChatSessions[userId].push(sessionId);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("A user disconnected", socket.id);
     delete userSocketMap[userId];
+    delete userChatSessions[userId];
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
-  })
-})
+  });
+});
 
 export {io, app, server};

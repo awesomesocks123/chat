@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Plus, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 const MAX_IMAGE_SIZE_MB = 5; // 5MB limit
@@ -10,8 +9,8 @@ const MessageInput = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageError, setImageError] = useState("");
   const fileInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
-  const canSend = (text.trim() || imagePreview) && !imageError;
+  const { sendMessage, selectedUser, selectedChatSession } = useChatStore();
+  const canSend = (text.trim() || imagePreview) && !imageError && selectedUser && selectedUser._id;
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -44,11 +43,16 @@ const MessageInput = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
+    if (!selectedUser || !selectedUser._id) {
+      toast.error("No user selected to send message to");
+      return;
+    }
 
     try {
       await sendMessage({
         text: text.trim(),
         image: imagePreview,
+        receiverId: selectedUser._id,
       });
 
       // Clear form
@@ -57,6 +61,7 @@ const MessageInput = () => {
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Failed to send message:", error);
+      toast.error("Failed to send message");
     }
   };
 
@@ -76,7 +81,7 @@ const MessageInput = () => {
               flex items-center justify-center"
               type="button"
             >
-              <X className="size-3" />
+              <i className="i-x size-3"></i>
             </button>
           </div>
         </div>
@@ -99,7 +104,7 @@ const MessageInput = () => {
           className={`btn btn-ghost btn-circle ${imagePreview ? "text-emerald-500" : ""}`}
           onClick={() => fileInputRef.current?.click()}
         >
-          <Plus size={20} />
+          <i className="i-plus"></i>
         </button>
 
         <input
@@ -110,7 +115,7 @@ const MessageInput = () => {
           onChange={(e) => setText(e.target.value)}
         />
         <button type='submit' disabled={!canSend} className='btn btn-primary animate-pulse h-10 min-h-0'>
-          <Send size={18} />
+          <i className="i-send"></i>
         </button>
       </form>
     </div>

@@ -1,6 +1,8 @@
 import express, { application } from "express";
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
+import friendRoutes from "./routes/friend.routes.js";
+import chatSessionRoutes from "./routes/chatSession.routes.js";
 import { connectDB } from "./lib/db.js";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -21,6 +23,8 @@ app.use(
 
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/friends", friendRoutes);
+app.use("/api/chat-sessions", chatSessionRoutes);
 
 server.listen(5001, () => {
   console.log("server is running on port " + PORT);

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
@@ -6,16 +6,38 @@ import MessagesSkeleton from "./MessagesSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 
 const ChatContainer = () => {
-  const { messages, getMessages, isMessagesLoading, selectedUser, subscribeToMessages, unsubscribeToMessages } =
-    useChatStore();
+  const { 
+    messages, 
+    getMessages, 
+    isMessagesLoading, 
+    selectedUser, 
+    selectedChatSession,
+    subscribeToMessages, 
+    unsubscribeToMessages 
+  } = useChatStore();
   const { authUser } = useAuthStore();
+  const messagesEndRef = useRef(null);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   useEffect(() => {
-    getMessages(selectedUser._id);
-    subscribeToMessages();
-    return () => unsubscribeToMessages();
-
-  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeToMessages]);
+    if (selectedChatSession && selectedChatSession._id) {
+      // If we have a selected chat session, get messages for it
+      getMessages(selectedChatSession._id);
+      subscribeToMessages();
+      return () => unsubscribeToMessages();
+    } else if (selectedUser && selectedUser._id) {
+      // If we only have a selected user, get or create a chat session
+      getMessages(selectedUser._id);
+      subscribeToMessages();
+      return () => unsubscribeToMessages();
+    }
+  }, [selectedUser, selectedChatSession, getMessages, subscribeToMessages, unsubscribeToMessages]);
 
   if (isMessagesLoading)
     return (
@@ -29,8 +51,11 @@ const ChatContainer = () => {
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
       <div id="messages-container" className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => {
-          const isSent = message.senderId === authUser._id;
+        {messages && messages.length > 0 ? messages.map((message) => {
+          // Check if the message has a sender field (new format) or senderId (old format)
+          const isSent = message.sender 
+            ? message.sender === authUser._id 
+            : message.senderId === authUser._id;
           return (
             <div
               key={message._id}
@@ -51,21 +76,28 @@ const ChatContainer = () => {
                 )}
                 {message.text && <p className='text-sm'>{message.text}</p>}
                 <p
-                  className={`
-                    text-[10px] mt-1.5
-                    ${isSent ? "text-primary-content/70" : "text-base-content/70"}
-                  `}
+                  className={`text-[10px] mt-1.5 ${isSent ? "text-primary-content/70" : "text-base-content/70"}`}
                 >
-                  {new Date(message.createdAt).toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
+                  {message.createdAt && !isNaN(new Date(message.createdAt)) 
+                    ? new Date(message.createdAt).toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    : new Date().toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                  }
                 </p>
               </div>
             </div>
           );
-        })}
-        <div id='anchor' className='h-px' />
+        }) : (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-base-content/50 text-sm">No messages yet. Say hello!</p>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
       <MessageInput />
     </div>
