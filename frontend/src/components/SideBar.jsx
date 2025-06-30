@@ -64,10 +64,11 @@ const SideBar = () => {
     getUsers();
     getFriends();
     getActiveChats();
-    getChatSessions();
-  }, [getUsers, getFriends, getActiveChats, getChatSessions]);
+    // Use the new getRecentMessages function instead of getChatSessions
+    useChatStore.getState().getRecentMessages();
+  }, [getUsers, getFriends, getActiveChats]);
 
-  // Listen for online users from socket
+  // Listen for online users and new chat sessions from socket
   useEffect(() => {
     const socket = useAuthStore.getState().socket;
 
@@ -78,11 +79,28 @@ const SideBar = () => {
         setOnlineUsers(users);
       });
 
+      // Listen for new chat sessions (from random matching)
+      socket.on("newChatSession", (data) => {
+        console.log("Received new chat session:", data);
+        toast.success(`New chat from ${data.user.fullName}`);
+        
+        // Process the new chat session
+        const processedSession = useChatStore.getState().processChatSession(data.chatSession);
+        
+        if (processedSession) {
+          // Update the chat sessions list
+          useChatStore.setState(state => ({
+            chatSessions: [processedSession, ...state.chatSessions]
+          }));
+        }
+      });
+
       // Request online users on mount
       socket.emit("getOnlineUsers");
 
       return () => {
         socket.off("getOnlineUsers");
+        socket.off("newChatSession");
       };
     }
   }, []);
@@ -118,19 +136,47 @@ const SideBar = () => {
 
   const handleUserSelect = async (item) => {
     if (viewMode === "chats") {
-      // Set the selected user to the other user in the chat session
+      // Set the selected user to the other user in the recent message
       setSelectedUser(item.otherUser);
-      // Set the selected chat session
-      useChatStore.getState().setSelectedChatSession(item);
-      // Get messages for this chat session
-      getMessages(item._id);
+      
+      // Get messages for this chat session using the chatSessionId
+      const chatSessionId = item.chatSessionId;
+      
+      try {
+        // Mark messages as read when selecting a chat
+        if (item.unreadCount > 0) {
+          await axiosInstance.post(`/users/mark-read/${chatSessionId}`);
+          
+          // Update the unread count in the local state
+          useChatStore.setState(state => ({
+            chatSessions: state.chatSessions.map(session => 
+              session.chatSessionId === chatSessionId 
+                ? { ...session, unreadCount: 0 }
+                : session
+            )
+          }));
+        }
+        
+        // Get the full chat session details
+        const sessionRes = await axiosInstance.get(`/chat-sessions/session/${chatSessionId}`);
+        const fullChatSession = sessionRes.data;
+        
+        // Set the selected chat session
+        useChatStore.getState().setSelectedChatSession(fullChatSession);
+        
+        // Get messages for this chat session
+        getMessages(chatSessionId);
+      } catch (error) {
+        console.error("Error loading chat session:", error);
+        toast.error("Failed to load chat session");
+      }
     } else {
       // For friends view, item is a user/friend object
       setSelectedUser(item);
       // Create or get a chat session with this user
       try {
         // Use the existing endpoint that gets or creates a chat session with a user
-        const res = await axiosInstance.get(`/chat-sessions/${item._id}`);
+        const res = await axiosInstance.get(`/chat-sessions/user/${item._id}`);
         if (res.data) {
           console.log("Got chat session for friend:", res.data);
           useChatStore.getState().setSelectedChatSession(res.data);
@@ -186,41 +232,32 @@ const SideBar = () => {
 
       <div className="overflow-y-auto flex-1">
         {viewMode === "chats" ? (
-          // Display chat sessions
+          // Display recent messages from the hybrid approach
           Array.isArray(chatSessions) && chatSessions.length > 0 ? (
             chatSessions
-              .filter((session) => {
-                // Find the other user in the participants
-                const otherUser = session.participants?.find(
-                  (user) => user?._id !== authUser?._id
-                );
-                return otherUser?.fullName
+              .filter((recentMsg) => {
+                // Filter by search term if we have otherUser data
+                if (!recentMsg.otherUser) return true;
+                
+                return recentMsg.otherUser.fullName
                   ?.toLowerCase()
                   .includes(searchTerm.toLowerCase());
               })
-              .map((session) => {
-                const isSelected = selectedChatSession?._id === session._id;
-
-                // Find the other user in the participants if otherUser is not set
-                let otherUser = session.otherUser;
-                if (!otherUser && session.participants) {
-                  otherUser =
-                    session.participants.find(
-                      (user) => user?._id !== authUser?._id
-                    ) || {};
-                }
-
+              .map((recentMsg) => {
+                const isSelected = selectedChatSession?._id === recentMsg.chatSessionId;
+                const otherUser = recentMsg.otherUser;
+                
                 // Skip rendering if we can't determine the other user
                 if (!otherUser) {
-                  console.log("Missing otherUser for session:", session);
+                  console.log("Missing otherUser for recent message:", recentMsg);
                   return null;
                 }
 
                 return (
                   <div
-                    key={session._id}
+                    key={recentMsg.chatSessionId}
                     className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-base-200 ${isSelected ? "bg-base-200" : ""}`}
-                    onClick={() => handleUserSelect(session)}
+                    onClick={() => handleUserSelect(recentMsg)}
                   >
                     <div className="avatar">
                       <div className="w-12 rounded-full">
@@ -231,33 +268,31 @@ const SideBar = () => {
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="font-medium truncate">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="font-medium truncate flex items-center gap-2">
                           {otherUser.fullName || "User"}
-                        </div>
-                        {otherUser &&
-                          otherUser._id &&
-                          Array.isArray(onlineUsers) &&
-                          onlineUsers.includes(otherUser._id) && (
+                          {otherUser._id && Array.isArray(onlineUsers) && onlineUsers.includes(otherUser._id) && (
                             <div className="badge badge-xs badge-success" />
                           )}
+                        </div>
+                        {recentMsg.unreadCount > 0 && (
+                          <div className="badge badge-sm badge-primary">{recentMsg.unreadCount}</div>
+                        )}
                       </div>
-                      {session.lastMessage && (
-                        <p className="text-xs text-base-content/70 truncate">
-                          {session.lastMessage.text || "Sent an image"}
-                        </p>
+                      {recentMsg.lastMessage && (
+                        <div className="flex justify-between items-center w-full">
+                          <p className="text-xs text-base-content/70 truncate">
+                            {recentMsg.lastMessage.text || "Sent an image"}
+                          </p>
+                          <div className="text-xs text-base-content/50 whitespace-nowrap ml-1">
+                            {recentMsg.lastMessage.createdAt &&
+                            !isNaN(new Date(recentMsg.lastMessage.createdAt))
+                              ? formatTimeAgo(new Date(recentMsg.lastMessage.createdAt))
+                              : "Just now"}
+                          </div>
+                        </div>
                       )}
                     </div>
-                    {session.lastMessage && (
-                      <div className="text-xs text-base-content/50">
-                        {session.lastMessage.createdAt &&
-                        !isNaN(new Date(session.lastMessage.createdAt))
-                          ? formatTimeAgo(
-                              new Date(session.lastMessage.createdAt)
-                            )
-                          : "Just now"}
-                      </div>
-                    )}
                   </div>
                 );
               })

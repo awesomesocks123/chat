@@ -31,56 +31,70 @@ export const useChatStore = create((set, get) => ({
     }
   },
   
+  // Get recent messages for sidebar (hybrid approach)
+  getRecentMessages: async () => {
+    set({ isUsersLoading: true });
+    try {
+      const res = await axiosInstance.get("/users/recent-messages");
+      console.log("Fetched recent messages:", res.data);
+      
+      set({ 
+        chatSessions: res.data,
+        isUsersLoading: false 
+      });
+      
+      return res.data;
+    } catch (error) {
+      console.log("Error fetching recent messages", error);
+      set({ isUsersLoading: false });
+      return [];
+    }
+  },
+  
+  // Legacy method - keep for backward compatibility
   getChatSessions: async () => {
     set({ isUsersLoading: true });
     try {
-      const res = await axiosInstance.get("/chat-sessions");
-      console.log("Fetched chat sessions:", res.data);
-      
-      // Process chat sessions to extract other participant
-      const authUser = useAuthStore.getState().authUser;
-      const processedSessions = res.data
-        .filter(session => {
-          // Ensure the session has a valid participants array
-          if (!session.participants || !Array.isArray(session.participants) || session.participants.length < 2) {
-            console.warn("Invalid chat session format:", session);
-            return false;
-          }
-          return true;
-        })
-        .map(session => {
-          // Find the other participant (not the current user)
-          const otherUser = session.participants.find(
-            user => user && user._id && user._id !== authUser._id
-          );
-          
-          if (!otherUser) {
-            console.warn("Could not find other user in session:", session);
-            // Create a placeholder user if we can't find the other user
-            return {
-              ...session,
-              otherUser: {
-                _id: "unknown",
-                fullName: "Unknown User",
-                profilePic: "/avatar.png"
-              }
-            };
-          }
-          
-          return {
-            ...session,
-            otherUser // Add the other user for easy access in UI
-          };
-        });
-      
-      console.log("Processed chat sessions:", processedSessions);
-      set({ chatSessions: processedSessions, isUsersLoading: false });
-      return processedSessions;
+      // Use the new getRecentMessages function instead
+      return await get().getRecentMessages();
     } catch (error) {
       console.log("Error fetching chat sessions", error);
       set({ isUsersLoading: false });
       return [];
     }
+  },
+  
+  // Process a chat session to extract the other participant
+  processChatSession: (session) => {
+    const authUser = useAuthStore.getState().authUser;
+    
+    // Ensure the session has valid participants
+    if (!session.participants || !Array.isArray(session.participants) || session.participants.length < 2) {
+      console.warn("Invalid chat session format:", session);
+      return null;
+    }
+    
+    // Find the other participant (not the current user)
+    const otherUser = session.participants.find(
+      user => user && user._id && user._id !== authUser._id
+    );
+    
+    if (!otherUser) {
+      console.warn("Could not find other user in session:", session);
+      return {
+        ...session,
+        otherUser: {
+          _id: "unknown",
+          fullName: "Unknown User",
+          profilePic: "/avatar.png"
+        }
+      };
+    }
+    
+    return {
+      ...session,
+      otherUser
+    };
   },
   
   getFriends: async () => {
@@ -121,17 +135,17 @@ export const useChatStore = create((set, get) => ({
       }
       
       // Get the full chat session
+      const sessionDetailsRes = await axiosInstance.get(`/chat-sessions/session/${chatSessionId}`);
       const sessionRes = await axiosInstance.get(`/chat-sessions/${chatSessionId}/messages`);
       console.log("Chat session messages:", sessionRes.data);
       
-      // Create a proper chat session object
+      // Use the session details from the API
       const authUser = useAuthStore.getState().authUser;
-      const chatSession = {
-        _id: chatSessionId,
-        participants: [user, authUser], // Include both participants
-        messages: sessionRes.data || [],
-        lastMessage: sessionRes.data?.length > 0 ? sessionRes.data[sessionRes.data.length - 1] : null
-      };
+      const chatSession = sessionDetailsRes.data;
+      
+      // Add messages to the chat session
+      chatSession.messages = sessionRes.data || [];
+      chatSession.lastMessage = sessionRes.data?.length > 0 ? sessionRes.data[sessionRes.data.length - 1] : null;
       
       set({ 
         selectedUser: user, 
@@ -182,6 +196,10 @@ export const useChatStore = create((set, get) => ({
   setViewMode: (mode) => {
     set({ viewMode: mode });
   },
+  
+  setSelectedChatSession: (chatSession) => {
+    set({ selectedChatSession: chatSession });
+  },
   getMessages: async (chatSessionId) => {
     if (!chatSessionId) return;
     
@@ -199,7 +217,7 @@ export const useChatStore = create((set, get) => ({
         // This is either a direct session ID or a user ID
         // If it's a user ID, we need to get or create a chat session
         try {
-          const sessionRes = await axiosInstance.get(`/chat-sessions/${chatSessionId}`);
+          const sessionRes = await axiosInstance.get(`/chat-sessions/session/${chatSessionId}`);
           const chatSession = sessionRes.data;
           
           // Find the other user in the participants
@@ -251,19 +269,72 @@ export const useChatStore = create((set, get) => ({
         receiverId: selectedUser._id
       };
       
+      // Create a temporary message to show immediately in the UI
+      const tempId = `temp-${Date.now()}`;
+      const authUser = useAuthStore.getState().authUser;
+      const tempMessage = {
+        _id: tempId,
+        sender: authUser._id,  // Important: use the current user's ID as sender
+        text: message.text,
+        image: message.image,
+        createdAt: new Date().toISOString(),
+        isTemp: true,  // Flag to identify temporary messages
+        isSentByMe: true  // Always true for messages sent by the current user
+      };
+      
+      // Add the temporary message to the UI immediately
+      set({ messages: [...get().messages, tempMessage] });
+      
+      // Also update the recent messages without a full refresh
+      set(state => {
+        const updatedSessions = state.chatSessions.map(session => {
+          if (session.chatSessionId === selectedChatSession._id) {
+            return {
+              ...session,
+              lastMessage: {
+                text: message.text,
+                image: message.image,
+                sender: authUser._id,
+                createdAt: new Date().toISOString()
+              },
+              // Reset unread count for our own messages
+              unreadCount: 0
+            };
+          }
+          return session;
+        });
+        
+        // Move the updated session to the top of the list
+        const updatedSessionIndex = updatedSessions.findIndex(s => s.chatSessionId === selectedChatSession._id);
+        if (updatedSessionIndex > 0) {
+          const [updatedSession] = updatedSessions.splice(updatedSessionIndex, 1);
+          updatedSessions.unshift(updatedSession);
+        }
+        
+        return { chatSessions: updatedSessions };
+      });
+      
+      // Send the actual message to the server
       const res = await axiosInstance.post(`/chat-sessions/${selectedChatSession._id}/messages`, messageWithReceiver);
       console.log("Message sent successfully:", res.data);
       
-      // Add the new message to the messages array
-      set({ messages: [...get().messages, res.data] });
-      
-      // Refresh chat sessions to update last message
-      await get().getChatSessions();
+      // Replace the temporary message with the real one from the server
+      set(state => ({
+        messages: state.messages.map(msg => 
+          msg._id === tempId ? res.data : msg
+        )
+      }));
       
       return res.data;
     } catch (error) {
       console.log("Error sending message", error);
       toast.error("Failed to send message");
+      
+      // Remove the temporary message if sending failed
+      set(state => ({
+        messages: state.messages.filter(msg => !msg.isTemp)
+      }));
+      
       return null;
     }
   },
@@ -272,35 +343,93 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser || !selectedChatSession) return;
   
     const socket = useAuthStore.getState().socket;
+    const authUser = useAuthStore.getState().authUser;
     
     // Join the chat session room
     socket.emit("joinChatSession", selectedChatSession._id);
     
+    // Remove existing listener to prevent duplicates
+    socket.off("newMessage");
+    
+    // Add new listener
     socket.on("newMessage", (data) => {
       console.log("Received new message via socket:", data);
       
-      // Check if this message belongs to our current chat session
-      if (data.chatSessionId === selectedChatSession._id) {
-        // The backend sends the message in a nested format, extract it
-        const messageData = data.message || data;
-        
-        // Ensure the message has a valid createdAt date and _id
-        const processedMessage = {
-          ...messageData,
-          _id: messageData._id || `temp-${Date.now()}`,
-          chatSessionId: data.chatSessionId,
-          createdAt: messageData.createdAt || new Date().toISOString()
-        };
-        
-        console.log("Adding processed message to state:", processedMessage);
-        
+      // Extract the message data
+      const messageData = data.message || data;
+      const chatSessionId = data.chatSessionId;
+      const senderId = messageData.sender || messageData.senderId;
+      
+      // Ensure the message has a valid createdAt date and _id
+      const processedMessage = {
+        ...messageData,
+        _id: messageData._id || `temp-${Date.now()}`,
+        chatSessionId: chatSessionId,
+        createdAt: messageData.createdAt || new Date().toISOString(),
+        // Explicitly identify if this is from the current user or not
+        sender: senderId,
+        isSentByMe: senderId && senderId.toString() === authUser._id.toString()
+      };
+      
+      console.log("Processing socket message:", processedMessage);
+      
+      // Check if this message is already in our state (to avoid duplicates)
+      const isDuplicate = get().messages.some(msg => 
+        msg._id === processedMessage._id || 
+        (msg.isTemp && msg.text === processedMessage.text && 
+         Math.abs(new Date(msg.createdAt) - new Date(processedMessage.createdAt)) < 5000)
+      );
+      
+      // Only update the messages array if we're currently viewing this chat session
+      if (!isDuplicate && selectedChatSession && chatSessionId === selectedChatSession._id) {
         set({ 
           messages: [...get().messages, processedMessage]
         });
-        
-        // Refresh chat sessions to update last message
-        get().getChatSessions();
       }
+      
+      // Always update the recent messages in the sidebar
+      set(state => {
+        // Find if we already have this chat session in our recent messages
+        const existingSessionIndex = state.chatSessions.findIndex(
+          session => session.chatSessionId === chatSessionId
+        );
+        
+        let updatedSessions = [...state.chatSessions];
+        
+        // Update the last message and unread count
+        if (existingSessionIndex !== -1) {
+          const session = updatedSessions[existingSessionIndex];
+          
+          // Only increment unread count if the message is from the other user
+          const unreadCount = !processedMessage.isSentByMe ? 
+            (session.unreadCount || 0) + 1 : 
+            (session.unreadCount || 0);
+          
+          // Update the session with new last message and unread count
+          updatedSessions[existingSessionIndex] = {
+            ...session,
+            lastMessage: {
+              text: processedMessage.text,
+              image: processedMessage.image,
+              sender: processedMessage.sender,
+              createdAt: processedMessage.createdAt
+            },
+            unreadCount: unreadCount
+          };
+          
+          // Move this session to the top of the list
+          if (existingSessionIndex > 0) {
+            const [updatedSession] = updatedSessions.splice(existingSessionIndex, 1);
+            updatedSessions.unshift(updatedSession);
+          }
+        } else {
+          // If we don't have this session yet, we'll need to fetch recent messages
+          // This could happen if this is a new chat session
+          get().getRecentMessages();
+        }
+        
+        return { chatSessions: updatedSessions };
+      });
     });
   },
   unsubscribeToMessages: () => {

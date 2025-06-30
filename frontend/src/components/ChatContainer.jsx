@@ -52,14 +52,32 @@ const ChatContainer = () => {
       <ChatHeader />
       <div id="messages-container" className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages && messages.length > 0 ? messages.map((message) => {
-          // Check if the message has a sender field (new format) or senderId (old format)
-          const isSent = message.sender 
-            ? message.sender === authUser._id 
-            : message.senderId === authUser._id;
+          // Use the pre-calculated isSentByMe flag from the backend if available
+          let isSent = message.isSentByMe;
+          
+          // If isSentByMe is not available (for temporary messages or old format), calculate it
+          if (isSent === undefined) {
+            // For temporary messages, they're always sent by the current user
+            if (message.isTemp) {
+              isSent = true;
+            } else {
+              // Check if the message has a sender field (new format) or senderId (old format)
+              // Handle both string and ObjectId comparison by converting to string
+              isSent = message.sender 
+                ? (typeof message.sender === 'string' 
+                    ? message.sender === authUser._id.toString() 
+                    : message.sender.toString() === authUser._id.toString())
+                : (message.senderId && message.senderId.toString() === authUser._id.toString());
+            }
+          }
+          
+          // Add a debug class to help identify message origin
+          const debugClass = message.isTemp ? 'temp-message' : (isSent ? 'sent-message' : 'received-message');
+          
           return (
             <div
               key={message._id}
-              className={`flex ${isSent ? "justify-end" : "justify-start"}`}
+              className={`chat ${isSent ? "chat-end" : "chat-start"} ${debugClass}`}
             >
               <div
                 className={`
