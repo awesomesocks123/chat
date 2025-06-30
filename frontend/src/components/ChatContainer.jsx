@@ -5,7 +5,7 @@ import MessageInput from "./MessageInput";
 import MessagesSkeleton from "./MessagesSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 
-const ChatContainer = () => {
+const ChatContainer = ({ toggleSidebar }) => {
   const { 
     messages, 
     getMessages, 
@@ -42,14 +42,14 @@ const ChatContainer = () => {
   if (isMessagesLoading)
     return (
       <div className="flex-1 flex flex-col overflow-auto">
-        <ChatHeader />
+        <ChatHeader toggleSidebar={toggleSidebar} />
         <MessagesSkeleton />
         <MessageInput />
       </div>
     );
   return (
     <div className="flex-1 flex flex-col overflow-auto">
-      <ChatHeader />
+      <ChatHeader toggleSidebar={toggleSidebar} />
       <div id="messages-container" className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages && messages.length > 0 ? messages.map((message) => {
           // Use the pre-calculated isSentByMe flag from the backend if available

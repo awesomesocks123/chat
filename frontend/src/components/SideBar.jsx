@@ -35,7 +35,7 @@ const formatTimeAgo = (date) => {
   }
 };
 
-const SideBar = () => {
+const SideBar = ({ toggleSidebar }) => {
   const {
     getUsers,
     users,
@@ -192,7 +192,12 @@ const SideBar = () => {
   if (isUsersLoading) return <div>Loading...</div>;
 
   return (
-    <div className="border-r border-r-base-300 p-4 flex flex-col h-full">
+    <div className="border-r border-r-base-300 p-4 flex flex-col h-full w-full">
+      {/* Mobile view indicator - only visible on small screens */}
+      <div className="md:hidden flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">Messages</h2>
+      </div>
+      
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <button
@@ -212,7 +217,13 @@ const SideBar = () => {
         </div>
         <button
           className={`btn btn-circle btn-sm items-center ${isRandomLoading ? "loading" : ""}`}
-          onClick={handleRandomChat}
+          onClick={() => {
+            handleRandomChat();
+            // On mobile, switch to chat view after finding a match
+            if (window.innerWidth < 768) {
+              setTimeout(() => toggleSidebar(), 1000);
+            }
+          }}
           disabled={isRandomLoading}
         >
           <Shuffle className="w-4 h-4" />
@@ -257,7 +268,12 @@ const SideBar = () => {
                   <div
                     key={recentMsg.chatSessionId}
                     className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-base-200 ${isSelected ? "bg-base-200" : ""}`}
-                    onClick={() => handleUserSelect(recentMsg)}
+                    onClick={() => {
+                      handleUserSelect(recentMsg);
+                      if (window.innerWidth < 768) {
+                        toggleSidebar();
+                      }
+                    }}
                   >
                     <div className="avatar">
                       <div className="w-12 rounded-full">
@@ -272,7 +288,7 @@ const SideBar = () => {
                         <div className="font-medium truncate flex items-center gap-2">
                           {otherUser.fullName || "User"}
                           {otherUser._id && Array.isArray(onlineUsers) && onlineUsers.includes(otherUser._id) && (
-                            <div className="badge badge-xs badge-success" />
+                            <div className="status status-lg status-success" />
                           )}
                         </div>
                         {recentMsg.unreadCount > 0 && (

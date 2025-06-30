@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import toast from "react-hot-toast";
-
+import { Send, Plus } from "lucide-react";
 const MAX_IMAGE_SIZE_MB = 5; // 5MB limit
 
 const MessageInput = () => {
@@ -104,7 +104,7 @@ const MessageInput = () => {
           className={`btn btn-ghost btn-circle ${imagePreview ? "text-emerald-500" : ""}`}
           onClick={() => fileInputRef.current?.click()}
         >
-          <i className="i-plus"></i>
+          <Plus/>
         </button>
 
         <input
@@ -115,7 +115,7 @@ const MessageInput = () => {
           onChange={(e) => setText(e.target.value)}
         />
         <button type='submit' disabled={!canSend} className='btn btn-primary animate-pulse h-10 min-h-0'>
-          <i className="i-send"></i>
+          <Send />
         </button>
       </form>
     </div>

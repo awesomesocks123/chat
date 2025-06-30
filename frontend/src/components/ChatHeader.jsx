@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-const ChatHeader = () => {
+import { ChevronLeft, UserPlus, UserCheck, X } from "lucide-react";
+const ChatHeader = ({ toggleSidebar }) => {
   const { selectedUser, setSelectedUser, addFriend, friends, getFriends, selectedChatSession, setSelectedChatSession } = useChatStore();
   const { onlineUsers, authUser } = useAuthStore();
   const [isFriend, setIsFriend] = useState(false);
@@ -20,6 +21,14 @@ const ChatHeader = () => {
     <div className="p-2.5 border-b border-base-300">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {/* Back button - only visible on mobile */}
+          <button 
+            onClick={toggleSidebar} 
+            className="md:hidden btn btn-sm btn-ghost btn-circle"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
           {/* Avatar */}
           {selectedUser && (
             <div className="avatar">
@@ -63,25 +72,25 @@ const ChatHeader = () => {
               }}
               disabled={isAdding}
             >
-              <i className={`i-user-plus ${isAdding ? "animate-spin" : ""}`}></i>
+              <UserPlus size={16} className={isAdding ? "animate-spin" : ""} />
               <span className="hidden md:inline">Add Friend</span>
             </button>
           ) : selectedUser && isFriend ? (
             <button className="btn btn-sm btn-ghost btn-disabled">
-              <i className="i-user-check text-success"></i>
+              <UserCheck size={16} className="text-success" />
               <span className="hidden md:inline">Friends</span>
             </button>
           ) : null}
           
           {/* X button to close out */}
           <button
-            className="cursor-pointer hover:bg-base-200 px-2 py-2 rounded-2xl hover:text-primary hover:scale-105 transition-transform"
+            className="btn btn-sm btn-ghost btn-circle hover:bg-base-200 hover:text-primary transition-colors"
             onClick={() => {
               setSelectedUser(null);
               setSelectedChatSession(null);
             }}
           >
-            <i className="i-x"></i>
+            <X size={16} />
           </button>
         </div>
       </div>
