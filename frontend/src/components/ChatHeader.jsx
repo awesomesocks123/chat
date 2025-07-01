@@ -1,12 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { ChevronLeft, UserPlus, UserCheck, X } from "lucide-react";
+import { ChevronLeft, UserPlus, UserCheck, X, Info, AlertTriangle, Flag, UserX, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 const ChatHeader = ({ toggleSidebar }) => {
-  const { selectedUser, setSelectedUser, addFriend, friends, getFriends, selectedChatSession, setSelectedChatSession } = useChatStore();
+  const { 
+    selectedUser, 
+    setSelectedUser, 
+    addFriend, 
+    friends, 
+    getFriends, 
+    selectedChatSession, 
+    setSelectedChatSession,
+    deleteChatSession 
+  } = useChatStore();
   const { onlineUsers, authUser } = useAuthStore();
   const [isFriend, setIsFriend] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [reportReason, setReportReason] = useState("");
   
   useEffect(() => {
     // Check if selected user is already a friend
@@ -17,6 +32,78 @@ const ChatHeader = ({ toggleSidebar }) => {
       setIsFriend(false);
     }
   }, [selectedUser, friends]);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showDropdown && !event.target.closest('.info-dropdown')) {
+        setShowDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+  
+  const handleReportSubmit = async () => {
+    if (!reportReason.trim()) {
+      toast.error("Please provide a reason for reporting");
+      return;
+    }
+    
+    try {
+      // Call the reportUser function from the store
+      const success = await useChatStore.getState().reportUser(selectedUser._id, reportReason);
+      
+      if (success) {
+        // Close the modal and reset the form
+        setShowReportModal(false);
+        setReportReason("");
+      }
+    } catch (error) {
+      console.error("Error reporting user:", error);
+      toast.error("Failed to report user");
+    }
+  };
+  
+  const handleBlockUser = async () => {
+    try {
+      if (selectedUser) {
+        // Call the blockUser function from the store
+        const success = await useChatStore.getState().blockUser(selectedUser._id);
+        
+        if (success) {
+          // The blockUser function already handles clearing the selected user and chat session
+          // Close the modal
+          setShowBlockModal(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      toast.error("Failed to block user");
+    }
+  };
+  
+  const handleDeleteChat = async () => {
+    try {
+      if (selectedChatSession) {
+        await deleteChatSession(selectedChatSession._id);
+        toast.success("Chat deleted successfully");
+        
+        // Reset the selected user and chat session
+        setSelectedUser(null);
+        setSelectedChatSession(null);
+      }
+      
+      // Close the modal
+      setShowDeleteModal(false);
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+      toast.error("Failed to delete chat");
+    }
+  };
   return (
     <div className="p-2.5 border-b border-base-300">
       <div className="flex items-center justify-between">
@@ -82,6 +169,61 @@ const ChatHeader = ({ toggleSidebar }) => {
             </button>
           ) : null}
           
+          {/* Info button with dropdown */}
+          {selectedUser && selectedChatSession && (
+            <div className="relative info-dropdown">
+              <button
+                className="btn btn-sm btn-ghost btn-circle hover:bg-base-200 hover:text-primary transition-colors"
+                onClick={() => setShowDropdown(!showDropdown)}
+              >
+                <Info size={16} />
+              </button>
+              
+              {showDropdown && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-base-100 shadow-lg rounded-lg z-50 border border-base-300">
+                  <ul className="menu p-2 text-sm">
+                    <li>
+                      <button 
+                        onClick={() => {
+                          setShowDropdown(false);
+                          setShowReportModal(true);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Flag size={14} />
+                        Report User
+                      </button>
+                    </li>
+                    <li>
+                      <button 
+                        onClick={() => {
+                          setShowDropdown(false);
+                          setShowBlockModal(true);
+                        }}
+                        className="flex items-center gap-2 text-error"
+                      >
+                        <UserX size={14} />
+                        Block User
+                      </button>
+                    </li>
+                    <li>
+                      <button 
+                        onClick={() => {
+                          setShowDropdown(false);
+                          setShowDeleteModal(true);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Trash2 size={14} />
+                        Delete Chat
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          
           {/* X button to close out */}
           <button
             className="btn btn-sm btn-ghost btn-circle hover:bg-base-200 hover:text-primary transition-colors"
@@ -94,6 +236,110 @@ const ChatHeader = ({ toggleSidebar }) => {
           </button>
         </div>
       </div>
+      
+      {/* Report Modal */}
+      {showReportModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-base-100 p-6 rounded-lg w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <Flag size={18} />
+              Report User
+            </h3>
+            
+            <p className="mb-4 text-sm">
+              Please provide a reason for reporting {selectedUser?.fullName}. Our team will review your report and take appropriate action.
+            </p>
+            
+            <textarea
+              className="textarea textarea-bordered w-full mb-4"
+              placeholder="Reason for reporting..."
+              rows="4"
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+            ></textarea>
+            
+            <div className="flex justify-end gap-2">
+              <button 
+                className="btn btn-sm btn-ghost"
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportReason("");
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-sm btn-primary"
+                onClick={handleReportSubmit}
+              >
+                Submit Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Block User Modal */}
+      {showBlockModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-base-100 p-6 rounded-lg w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-error">
+              <AlertTriangle size={18} />
+              Block User
+            </h3>
+            
+            <p className="mb-4 text-sm">
+              Are you sure you want to block {selectedUser?.fullName}? This will permanently delete your chat history and prevent future matching with this user.
+            </p>
+            
+            <div className="flex justify-end gap-2">
+              <button 
+                className="btn btn-sm btn-ghost"
+                onClick={() => setShowBlockModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-sm btn-error"
+                onClick={handleBlockUser}
+              >
+                Block User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Chat Modal */}
+      {showDeleteModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-base-100 p-6 rounded-lg w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <AlertTriangle size={18} />
+              Delete Chat
+            </h3>
+            
+            <p className="mb-4 text-sm">
+              Are you sure you want to delete this chat with {selectedUser?.fullName}? This will remove your chat history, but you may be matched with this user again in the future.
+            </p>
+            
+            <div className="flex justify-end gap-2">
+              <button 
+                className="btn btn-sm btn-ghost"
+                onClick={() => setShowDeleteModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-sm btn-primary"
+                onClick={handleDeleteChat}
+              >
+                Delete Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

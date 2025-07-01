@@ -1,110 +1,40 @@
 import { create } from "zustand";
+import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { useAuthStore } from "./useAuthStore";
-import { axiosInstance } from "../lib/axios";
-
-// Helper to extract other user from chat session participants
-const getOtherUser = (participants, currentUserId) => {
-  return participants.find(user => user._id !== currentUserId);
-};
 
 export const useChatStore = create((set, get) => ({
   selectedUser: null,
-  selectedChatSession: null,
-  chatSessions: [],
   users: [],
   friends: [],
-  activeChats: [],
-  messages: [], // Initialize messages as empty array
+  messages: [],
   isUsersLoading: false,
-  isMessagesLoading: false,
   viewMode: "chats", // "chats" or "friends"
-
+  activeChats: [],
+  chatSessions: [],
+  selectedChatSession: null,
+  blockedUsers: [],
+  
+  setViewMode: (viewMode) => set({ viewMode }),
+  
   getUsers: async () => {
     set({ isUsersLoading: true });
     try {
-      const res = await axiosInstance.get("/messages/users");
+      const res = await axiosInstance.get("/users");
       set({ users: res.data, isUsersLoading: false });
     } catch (error) {
-      console.log("Error fetching users", error);
+      console.log(error);
       set({ isUsersLoading: false });
     }
-  },
-  
-  // Get recent messages for sidebar (hybrid approach)
-  getRecentMessages: async () => {
-    set({ isUsersLoading: true });
-    try {
-      const res = await axiosInstance.get("/users/recent-messages");
-      console.log("Fetched recent messages:", res.data);
-      
-      set({ 
-        chatSessions: res.data,
-        isUsersLoading: false 
-      });
-      
-      return res.data;
-    } catch (error) {
-      console.log("Error fetching recent messages", error);
-      set({ isUsersLoading: false });
-      return [];
-    }
-  },
-  
-  // Legacy method - keep for backward compatibility
-  getChatSessions: async () => {
-    set({ isUsersLoading: true });
-    try {
-      // Use the new getRecentMessages function instead
-      return await get().getRecentMessages();
-    } catch (error) {
-      console.log("Error fetching chat sessions", error);
-      set({ isUsersLoading: false });
-      return [];
-    }
-  },
-  
-  // Process a chat session to extract the other participant
-  processChatSession: (session) => {
-    const authUser = useAuthStore.getState().authUser;
-    
-    // Ensure the session has valid participants
-    if (!session.participants || !Array.isArray(session.participants) || session.participants.length < 2) {
-      console.warn("Invalid chat session format:", session);
-      return null;
-    }
-    
-    // Find the other participant (not the current user)
-    const otherUser = session.participants.find(
-      user => user && user._id && user._id !== authUser._id
-    );
-    
-    if (!otherUser) {
-      console.warn("Could not find other user in session:", session);
-      return {
-        ...session,
-        otherUser: {
-          _id: "unknown",
-          fullName: "Unknown User",
-          profilePic: "/avatar.png"
-        }
-      };
-    }
-    
-    return {
-      ...session,
-      otherUser
-    };
   },
   
   getFriends: async () => {
     set({ isUsersLoading: true });
     try {
-      const res = await axiosInstance.get("/friends/list");
+      const res = await axiosInstance.get("/friends");
       set({ friends: res.data, isUsersLoading: false });
     } catch (error) {
-      console.log("Error fetching friends", error);
-      toast.error("Failed to load friends");
+      console.log(error);
       set({ isUsersLoading: false });
     }
   },
@@ -112,339 +42,353 @@ export const useChatStore = create((set, get) => ({
   getActiveChats: async () => {
     set({ isUsersLoading: true });
     try {
-      const res = await axiosInstance.get("/friends/active-chats");
+      const res = await axiosInstance.get("/users/active-chats");
       set({ activeChats: res.data, isUsersLoading: false });
     } catch (error) {
-      console.log("Error fetching active chats", error);
+      console.log(error);
       set({ isUsersLoading: false });
     }
   },
   
-  getRandomUser: async () => {
+  getMessages: async (chatSessionId) => {
     set({ isUsersLoading: true });
     try {
-      console.log("Fetching random user...");
-      const res = await axiosInstance.get("/chat-sessions/random/match");
-      console.log("Random match API response:", res.data);
-      
-      const { user, chatSessionId } = res.data;
-      console.log("Matched with user:", user?.fullName, "Session ID:", chatSessionId);
-      
-      if (!user || !chatSessionId) {
-        throw new Error("Invalid response from server");
+      if (!chatSessionId) {
+        console.error("No chat session ID provided");
+        set({ messages: [], isUsersLoading: false });
+        return;
       }
       
-      // Get the full chat session
-      const sessionDetailsRes = await axiosInstance.get(`/chat-sessions/session/${chatSessionId}`);
-      const sessionRes = await axiosInstance.get(`/chat-sessions/${chatSessionId}/messages`);
-      console.log("Chat session messages:", sessionRes.data);
+      console.log("Getting messages for chat session:", chatSessionId);
+      const res = await axiosInstance.get(`/messages/${chatSessionId}`);
+      set({ messages: res.data, isUsersLoading: false });
       
-      // Use the session details from the API
-      const authUser = useAuthStore.getState().authUser;
-      const chatSession = sessionDetailsRes.data;
-      
-      // Add messages to the chat session
-      chatSession.messages = sessionRes.data || [];
-      chatSession.lastMessage = sessionRes.data?.length > 0 ? sessionRes.data[sessionRes.data.length - 1] : null;
-      
-      set({ 
-        selectedUser: user, 
-        selectedChatSession: chatSession,
-        messages: sessionRes.data || [],
-        isUsersLoading: false 
-      });
-      
-      // Subscribe to messages for this chat session
-      get().subscribeToMessages();
-      
-      // Refresh chat sessions list
-      await get().getChatSessions();
-      
-      return user;
+      // Subscribe to this chat session
+      const socket = useAuthStore.getState().socket;
+      if (socket) {
+        // Join the chat session room
+        socket.emit("joinChatSession", chatSessionId);
+        console.log(`Joined chat session room: ${chatSessionId}`);
+        
+        // Listen for new messages in this chat session
+        socket.on("newMessage", (message) => {
+          console.log("Received new message:", message);
+          // Add the new message to the messages array
+          set((state) => ({
+            messages: [...state.messages, message],
+          }));
+          
+          // Update the chat sessions list with the new message
+          set((state) => ({
+            chatSessions: state.chatSessions.map((session) => {
+              if (session.chatSessionId === chatSessionId) {
+                return {
+                  ...session,
+                  lastMessage: message,
+                  unreadCount: session.unreadCount + 1
+                };
+              }
+              return session;
+            }),
+          }));
+        });
+      }
     } catch (error) {
-      console.log("Error getting random user", error);
-      toast.error(error.response?.data?.error || "No users available for matching");
+      console.log(error);
       set({ isUsersLoading: false });
-      return null;
     }
   },
   
-  addFriend: async (userId) => {
+  sendMessage: async (message, chatSessionId) => {
     try {
-      await axiosInstance.post("/friends/add", { userId });
-      toast.success("Friend added successfully");
-      // Refresh friends list
-      await get().getFriends();
-    } catch (error) {
-      console.log("Error adding friend", error);
-      toast.error(error.response?.data?.error || "Failed to add friend");
-    }
-  },
-  
-  removeFriend: async (userId) => {
-    try {
-      await axiosInstance.delete(`/friends/remove/${userId}`);
-      toast.success("Friend removed successfully");
-      // Refresh friends list
-      await get().getFriends();
-    } catch (error) {
-      console.log("Error removing friend", error);
-      toast.error("Failed to remove friend");
-    }
-  },
-  
-  setViewMode: (mode) => {
-    set({ viewMode: mode });
-  },
-  
-  setSelectedChatSession: (chatSession) => {
-    set({ selectedChatSession: chatSession });
-  },
-  getMessages: async (chatSessionId) => {
-    if (!chatSessionId) return;
-    
-    set({ isMessagesLoading: true });
-    
-    try {
-      console.log(`Fetching messages for chat session: ${chatSessionId}`);
-      
-      // Get messages for this session
-      const messagesRes = await axiosInstance.get(`/chat-sessions/${chatSessionId}/messages`);
-      console.log(`Received ${messagesRes.data.length} messages for chat session`);
-      
-      // If we don't have a selected chat session yet, get the full session details
-      if (!get().selectedChatSession || get().selectedChatSession._id !== chatSessionId) {
-        // This is either a direct session ID or a user ID
-        // If it's a user ID, we need to get or create a chat session
-        try {
-          const sessionRes = await axiosInstance.get(`/chat-sessions/session/${chatSessionId}`);
-          const chatSession = sessionRes.data;
-          
-          // Find the other user in the participants
-          const authUser = useAuthStore.getState().authUser;
-          const otherUser = chatSession.participants.find(
-            user => user._id !== authUser._id
-          );
-          
-          set({ 
-            selectedChatSession: chatSession,
-            selectedUser: otherUser
-          });
-          
-          // Subscribe to messages for this chat session
-          get().subscribeToMessages();
-        } catch (sessionError) {
-          console.log("Error fetching chat session", sessionError);
-        }
-      }
-      
-      set({ 
-        messages: messagesRes.data,
-        isMessagesLoading: false
+      // Send the message to the server
+      const res = await axiosInstance.post(`/messages/${chatSessionId}`, {
+        text: message,
       });
       
-      return messagesRes.data;
-    } catch (error) {
-      console.log("Error fetching messages", error);
-      toast.error("Failed to load messages");
-      set({ isMessagesLoading: false });
-      return [];
-    }
-  },
-  sendMessage: async (message) => {
-    const { selectedUser, selectedChatSession } = get();
-    
-    if (!selectedUser || !selectedChatSession) {
-      console.log("No chat session selected, cannot send message");
-      toast.error("Please select a user to chat with");
-      return;
-    }
-    
-    try {
-      console.log(`Sending message to chat session: ${selectedChatSession._id}`);
+      // Add the new message to the messages array
+      set((state) => ({
+        messages: [...state.messages, res.data],
+      }));
       
-      // Add receiverId to the message payload
-      const messageWithReceiver = {
-        ...message,
-        receiverId: selectedUser._id
-      };
-      
-      // Create a temporary message to show immediately in the UI
-      const tempId = `temp-${Date.now()}`;
-      const authUser = useAuthStore.getState().authUser;
-      const tempMessage = {
-        _id: tempId,
-        sender: authUser._id,  // Important: use the current user's ID as sender
-        text: message.text,
-        image: message.image,
-        createdAt: new Date().toISOString(),
-        isTemp: true,  // Flag to identify temporary messages
-        isSentByMe: true  // Always true for messages sent by the current user
-      };
-      
-      // Add the temporary message to the UI immediately
-      set({ messages: [...get().messages, tempMessage] });
-      
-      // Also update the recent messages without a full refresh
-      set(state => {
-        const updatedSessions = state.chatSessions.map(session => {
-          if (session.chatSessionId === selectedChatSession._id) {
+      // Update the chat sessions list with the new message
+      set((state) => ({
+        chatSessions: state.chatSessions.map((session) => {
+          if (session.chatSessionId === chatSessionId) {
             return {
               ...session,
-              lastMessage: {
-                text: message.text,
-                image: message.image,
-                sender: authUser._id,
-                createdAt: new Date().toISOString()
-              },
-              // Reset unread count for our own messages
-              unreadCount: 0
+              lastMessage: res.data,
             };
           }
           return session;
-        });
-        
-        // Move the updated session to the top of the list
-        const updatedSessionIndex = updatedSessions.findIndex(s => s.chatSessionId === selectedChatSession._id);
-        if (updatedSessionIndex > 0) {
-          const [updatedSession] = updatedSessions.splice(updatedSessionIndex, 1);
-          updatedSessions.unshift(updatedSession);
-        }
-        
-        return { chatSessions: updatedSessions };
-      });
-      
-      // Send the actual message to the server
-      const res = await axiosInstance.post(`/chat-sessions/${selectedChatSession._id}/messages`, messageWithReceiver);
-      console.log("Message sent successfully:", res.data);
-      
-      // Replace the temporary message with the real one from the server
-      set(state => ({
-        messages: state.messages.map(msg => 
-          msg._id === tempId ? res.data : msg
-        )
+        }),
       }));
       
       return res.data;
     } catch (error) {
-      console.log("Error sending message", error);
-      toast.error("Failed to send message");
+      console.log(error);
+      return null;
+    }
+  },
+  
+  getRandomUser: async () => {
+    try {
+      const res = await axiosInstance.get("/chat-sessions/random/match");
+      console.log("Random match response:", res.data);
       
-      // Remove the temporary message if sending failed
-      set(state => ({
-        messages: state.messages.filter(msg => !msg.isTemp)
-      }));
+      if (res.data && res.data.user) {
+        // Get the chat session details
+        const chatSessionRes = await axiosInstance.get(`/chat-sessions/session/${res.data.chatSessionId}`);
+        const chatSession = chatSessionRes.data;
+        
+        // Set the selected user and chat session
+        set({ 
+          selectedUser: res.data.user,
+          selectedChatSession: chatSession
+        });
+        
+        // Get messages for this chat session
+        get().getMessages(res.data.chatSessionId);
+        
+        // Update the chat sessions list with the new chat session
+        get().getRecentMessages();
+        
+        return res.data.user;
+      }
+      return null;
+    } catch (error) {
+      console.log("Error in getRandomUser:", error);
+      
+      // Check if the error is because the user already has chat sessions with all available users
+      if (error.response?.data?.error?.includes("You already have chat sessions with all available users")) {
+        toast.error("No new users available for matching. Delete some existing chats to match with new users.");
+      } else {
+        toast.error(error.response?.data?.error || "Failed to get random user");
+      }
       
       return null;
     }
   },
-  subscribeToMessages: () => {
-    const { selectedUser, selectedChatSession } = get();
-    if (!selectedUser || !selectedChatSession) return;
   
-    const socket = useAuthStore.getState().socket;
+  addFriend: async (friendId) => {
+    try {
+      const res = await axiosInstance.post("/friends", { friendId });
+      return res.data;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  },
+  
+  getRecentMessages: async () => {
+    try {
+      const res = await axiosInstance.get("/chat-sessions");
+      console.log("Got chat sessions:", res.data);
+      
+      // Process each chat session to extract the other user
+      const processedSessions = res.data.map(session => {
+        return get().processChatSession(session);
+      });
+      
+      set({ chatSessions: processedSessions });
+      return processedSessions;
+    } catch (error) {
+      console.log("Error getting recent messages:", error);
+      return [];
+    }
+  },
+  
+  processChatSession: (chatSession) => {
+    if (!chatSession) return null;
+    
     const authUser = useAuthStore.getState().authUser;
     
-    // Join the chat session room
-    socket.emit("joinChatSession", selectedChatSession._id);
-    
-    // Remove existing listener to prevent duplicates
-    socket.off("newMessage");
-    
-    // Add new listener
-    socket.on("newMessage", (data) => {
-      console.log("Received new message via socket:", data);
-      
-      // Extract the message data
-      const messageData = data.message || data;
-      const chatSessionId = data.chatSessionId;
-      const senderId = messageData.sender || messageData.senderId;
-      
-      // Ensure the message has a valid createdAt date and _id
-      const processedMessage = {
-        ...messageData,
-        _id: messageData._id || `temp-${Date.now()}`,
-        chatSessionId: chatSessionId,
-        createdAt: messageData.createdAt || new Date().toISOString(),
-        // Explicitly identify if this is from the current user or not
-        sender: senderId,
-        isSentByMe: senderId && senderId.toString() === authUser._id.toString()
-      };
-      
-      console.log("Processing socket message:", processedMessage);
-      
-      // Check if this message is already in our state (to avoid duplicates)
-      const isDuplicate = get().messages.some(msg => 
-        msg._id === processedMessage._id || 
-        (msg.isTemp && msg.text === processedMessage.text && 
-         Math.abs(new Date(msg.createdAt) - new Date(processedMessage.createdAt)) < 5000)
+    // Find the other user in the participants array
+    let otherUser = null;
+    if (chatSession.participants && chatSession.participants.length > 0) {
+      otherUser = chatSession.participants.find(
+        (user) => user._id !== authUser._id
       );
-      
-      // Only update the messages array if we're currently viewing this chat session
-      if (!isDuplicate && selectedChatSession && chatSessionId === selectedChatSession._id) {
-        set({ 
-          messages: [...get().messages, processedMessage]
-        });
-      }
-      
-      // Always update the recent messages in the sidebar
-      set(state => {
-        // Find if we already have this chat session in our recent messages
-        const existingSessionIndex = state.chatSessions.findIndex(
-          session => session.chatSessionId === chatSessionId
-        );
-        
-        let updatedSessions = [...state.chatSessions];
-        
-        // Update the last message and unread count
-        if (existingSessionIndex !== -1) {
-          const session = updatedSessions[existingSessionIndex];
-          
-          // Only increment unread count if the message is from the other user
-          const unreadCount = !processedMessage.isSentByMe ? 
-            (session.unreadCount || 0) + 1 : 
-            (session.unreadCount || 0);
-          
-          // Update the session with new last message and unread count
-          updatedSessions[existingSessionIndex] = {
-            ...session,
-            lastMessage: {
-              text: processedMessage.text,
-              image: processedMessage.image,
-              sender: processedMessage.sender,
-              createdAt: processedMessage.createdAt
-            },
-            unreadCount: unreadCount
-          };
-          
-          // Move this session to the top of the list
-          if (existingSessionIndex > 0) {
-            const [updatedSession] = updatedSessions.splice(existingSessionIndex, 1);
-            updatedSessions.unshift(updatedSession);
-          }
-        } else {
-          // If we don't have this session yet, we'll need to fetch recent messages
-          // This could happen if this is a new chat session
-          get().getRecentMessages();
-        }
-        
-        return { chatSessions: updatedSessions };
-      });
-    });
+    }
+    
+    // If we couldn't find the other user, this is probably a self-chat or invalid
+    if (!otherUser) {
+      console.warn("Could not find other user in chat session:", chatSession);
+      return null;
+    }
+    
+    // Return a processed chat session with the other user and last message
+    return {
+      chatSessionId: chatSession._id,
+      otherUser,
+      lastMessage: chatSession.lastMessage,
+      unreadCount: chatSession.unreadCount || 0
+    };
   },
-  unsubscribeToMessages: () => {
+  
+  cleanupChat: () => {
     const socket = useAuthStore.getState().socket;
-    const { selectedChatSession } = get();
+    if (!socket) return;
     
     // Remove event listener
     socket.off("newMessage");
     
     // Leave the chat session room if we have one
-    if (selectedChatSession && selectedChatSession._id) {
-      socket.emit("leaveChatSession", selectedChatSession._id);
-      console.log(`Left chat session room: ${selectedChatSession._id}`);
+    if (get().selectedChatSession && get().selectedChatSession._id) {
+      socket.emit("leaveChatSession", get().selectedChatSession._id);
+      console.log(`Left chat session room: ${get().selectedChatSession._id}`);
     }
   },
+  
   setSelectedUser: async (selectedUser) => set({ selectedUser }),
   setSelectedChatSession: (selectedChatSession) => set({ selectedChatSession }),
+  
+  deleteChatSession: async (chatSessionId) => {
+    try {
+      set({ isLoading: true });
+      
+      // Call the API to delete the chat session
+      await axiosInstance.delete(`/chat-sessions/session/${chatSessionId}`);
+      
+      // Update the local state
+      set(state => ({
+        chatSessions: state.chatSessions.filter(session => session.chatSessionId !== chatSessionId),
+        // If the deleted session was selected, clear the selection
+        selectedChatSession: state.selectedChatSession?._id === chatSessionId ? null : state.selectedChatSession,
+        selectedUser: state.selectedChatSession?._id === chatSessionId ? null : state.selectedUser,
+        messages: state.selectedChatSession?._id === chatSessionId ? [] : state.messages
+      }));
+      
+      toast.success("Chat session deleted successfully");
+      return true;
+    } catch (error) {
+      console.error("Error deleting chat session:", error);
+      toast.error(error.response?.data?.error || "Failed to delete chat session");
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  blockUser: async (userId, reason = "") => {
+    try {
+      set({ isLoading: true });
+      
+      // Call the API to block the user
+      await axiosInstance.post(`/blocked-users/block/${userId}`, { reason });
+      
+      // Get the chat session with this user if it exists
+      const { selectedChatSession, selectedUser } = get();
+      
+      // Update the local state - remove any chat sessions with this user
+      set(state => ({
+        chatSessions: state.chatSessions.filter(session => 
+          session.otherUser?._id !== userId
+        ),
+        // If the blocked user was selected, clear the selection
+        selectedChatSession: selectedUser?._id === userId ? null : state.selectedChatSession,
+        selectedUser: selectedUser?._id === userId ? null : state.selectedUser,
+        messages: selectedUser?._id === userId ? [] : state.messages
+      }));
+      
+      toast.success("User blocked successfully");
+      return true;
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      toast.error(error.response?.data?.error || "Failed to block user");
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  reportUser: async (userId, reason) => {
+    try {
+      set({ isLoading: true });
+      
+      // Call the API to report the user
+      await axiosInstance.post(`/blocked-users/report/${userId}`, { reason });
+      
+      toast.success("User reported successfully");
+      return true;
+    } catch (error) {
+      console.error("Error reporting user:", error);
+      toast.error(error.response?.data?.error || "Failed to report user");
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  getBlockedUsers: async () => {
+    try {
+      set({ isLoading: true });
+      
+      // Call the API to get blocked users
+      const response = await axiosInstance.get('/blocked-users');
+      
+      // Update the state with blocked users
+      set({ blockedUsers: response.data });
+      
+      return response.data;
+    } catch (error) {
+      console.error("Error getting blocked users:", error);
+      toast.error("Failed to get blocked users");
+      return [];
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  unblockUser: async (userId) => {
+    try {
+      set({ isLoading: true });
+      
+      // Call the API to unblock the user
+      await axiosInstance.delete(`/blocked-users/unblock/${userId}`);
+      
+      // Update the blocked users list
+      set(state => ({
+        blockedUsers: state.blockedUsers.filter(block => block.blocked._id !== userId)
+      }));
+      
+      toast.success("User unblocked successfully");
+      return true;
+    } catch (error) {
+      console.error("Error unblocking user:", error);
+      toast.error("Failed to unblock user");
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  // Socket message subscription management
+  subscribeToMessages: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+    
+    // Subscribe to new messages
+    socket.on("newMessage", (message) => {
+      // Add the new message to the messages array
+      set(state => ({
+        messages: [...state.messages, message]
+      }));
+      
+      // Update the chat sessions list with the new message
+      get().getRecentMessages();
+    });
+    
+    console.log("Subscribed to messages");
+  },
+  
+  unsubscribeToMessages: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+    
+    // Unsubscribe from new messages
+    socket.off("newMessage");
+    
+    console.log("Unsubscribed from messages");
+  }
 }));

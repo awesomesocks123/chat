@@ -1,5 +1,7 @@
-import ChatSession from "../models/chatSession.model.js";
 import User from "../models/user.model.js";
+import ChatSession from "../models/chatSession.model.js";
+import Message from "../models/message.model.js";
+import BlockedUser from "../models/blockedUser.model.js";
 import { io } from "../lib/socket.js";
 import { getReceiverSocketId } from "../lib/socket.js";
 import { updateUserRecentMessage } from "./user.controller.js";
@@ -211,6 +213,49 @@ export const getChatSessionMessages = async (req, res) => {
 };
 
 // Create a random chat match
+// Delete a chat session
+export const deleteChatSession = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const userId = req.user._id;
+
+    // Find the chat session
+    const chatSession = await ChatSession.findOne({
+      _id: sessionId,
+      participants: userId
+    });
+
+    if (!chatSession) {
+      return res.status(404).json({ error: "Chat session not found or you're not a participant" });
+    }
+
+    // Get the other participant
+    const otherParticipantId = chatSession.participants.find(
+      participantId => participantId.toString() !== userId.toString()
+    );
+
+    // Delete the chat session
+    await ChatSession.findByIdAndDelete(sessionId);
+
+    // Remove from both users' active chats and recent messages
+    await User.updateMany(
+      { _id: { $in: chatSession.participants } },
+      { 
+        $pull: { 
+          activeChats: { $in: chatSession.participants },
+          recentMessages: { chatSessionId: chatSession._id }
+        }
+      }
+    );
+
+    console.log(`Chat session ${sessionId} deleted successfully`);
+    res.status(200).json({ message: "Chat session deleted successfully" });
+  } catch (error) {
+    console.error("Error in deleteChatSession:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 export const createRandomChatMatch = async (req, res) => {
   try {
     const currentUserId = req.user._id;
@@ -218,12 +263,30 @@ export const createRandomChatMatch = async (req, res) => {
     // Find current user
     const currentUser = await User.findById(currentUserId);
     
-    // Only exclude current user and friends (not active chats)
-    // This allows repeated random matching with the same users
+    // Get blocked users (users that the current user has blocked)
+    let blockedIds = [];
+    let blockerIds = [];
+    
+    try {
+      const blockedByUser = await BlockedUser.find({ blocker: currentUserId })
+        .select('blocked');
+      blockedIds = blockedByUser.map(block => block.blocked);
+      
+      // Get users who have blocked the current user
+      const blockedByOthers = await BlockedUser.find({ blocked: currentUserId })
+        .select('blocker');
+      blockerIds = blockedByOthers.map(block => block.blocker);
+    } catch (error) {
+      console.error("Error fetching blocked users:", error.message);
+      // Continue with empty arrays if there's an error
+    }
+    
+    // Exclude current user, friends, blocked users, and users who have blocked the current user
     const excludeIds = [
       currentUserId, 
-      ...currentUser.friends
-      // Removed activeChats to allow re-matching with previous random matches
+      ...currentUser.friends,
+      ...blockedIds,
+      ...blockerIds
     ];
     
     console.log(`Finding random match for user ${currentUserId}. Excluding ${excludeIds.length} users.`);
@@ -237,9 +300,39 @@ export const createRandomChatMatch = async (req, res) => {
       return res.status(404).json({ error: "No users available for matching" });
     }
     
-    // Select a random user from potential matches
-    const randomIndex = Math.floor(Math.random() * potentialMatches.length);
-    const randomUser = potentialMatches[randomIndex];
+    // Get all existing chat sessions for the current user
+    const existingChatSessions = await ChatSession.find({
+      participants: currentUserId
+    });
+    
+    // Extract all users who already have a chat session with the current user
+    const usersWithExistingSessions = new Set();
+    existingChatSessions.forEach(session => {
+      session.participants.forEach(participantId => {
+        // Convert to string for comparison
+        const participantIdStr = participantId.toString();
+        if (participantIdStr !== currentUserId.toString()) {
+          usersWithExistingSessions.add(participantIdStr);
+        }
+      });
+    });
+    
+    console.log(`User already has chat sessions with ${usersWithExistingSessions.size} other users`);
+    
+    // Filter out users who already have a chat session with the current user
+    const eligibleMatches = potentialMatches.filter(user => {
+      return !usersWithExistingSessions.has(user._id.toString());
+    });
+    
+    if (eligibleMatches.length === 0) {
+      return res.status(404).json({ 
+        error: "No new users available for matching. You already have chat sessions with all available users."
+      });
+    }
+    
+    // Select a random user from eligible matches
+    const randomIndex = Math.floor(Math.random() * eligibleMatches.length);
+    const randomUser = eligibleMatches[randomIndex];
     
     // Create a new chat session
     const newChatSession = await ChatSession.create({

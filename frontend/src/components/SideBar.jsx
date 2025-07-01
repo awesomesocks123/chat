@@ -3,7 +3,8 @@ import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
-import { Users, MessagesSquare, Shuffle } from "lucide-react";
+import { Users, MessagesSquare, Shuffle, Trash2 } from "lucide-react";
+
 // Simple function to format time ago
 const formatTimeAgo = (date) => {
   // Check if date is valid
@@ -53,12 +54,14 @@ const SideBar = ({ toggleSidebar }) => {
     getChatSessions,
     getMessages,
     selectedChatSession,
+    deleteChatSession,
   } = useChatStore();
 
   const { authUser } = useAuthStore();
   const [isRandomLoading, setIsRandomLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
 
   useEffect(() => {
     getUsers();
@@ -189,6 +192,17 @@ const SideBar = ({ toggleSidebar }) => {
     }
   };
 
+  const handleDeleteChatSession = async (chatSessionId) => {
+    try {
+      const success = await deleteChatSession(chatSessionId);
+      if (success) {
+        setShowDeleteConfirm(null);
+      }
+    } catch (error) {
+      console.error("Error deleting chat session:", error);
+    }
+  };
+
   if (isUsersLoading) return <div>Loading...</div>;
 
   return (
@@ -267,48 +281,78 @@ const SideBar = ({ toggleSidebar }) => {
                 return (
                   <div
                     key={recentMsg.chatSessionId}
-                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-base-200 ${isSelected ? "bg-base-200" : ""}`}
-                    onClick={() => {
-                      handleUserSelect(recentMsg);
-                      if (window.innerWidth < 768) {
-                        toggleSidebar();
-                      }
-                    }}
+                    className={`flex items-center gap-3 p-2 rounded-lg hover:bg-base-200 ${isSelected ? "bg-base-200" : ""}`}
                   >
-                    <div className="avatar">
-                      <div className="w-12 rounded-full">
-                        <img
-                          src={otherUser.profilePic || "/avatar.png"}
-                          alt={otherUser.fullName || "User"}
-                        />
+                    <div 
+                      className="flex-1 flex items-center gap-3 cursor-pointer"
+                      onClick={() => {
+                        handleUserSelect(recentMsg);
+                        if (window.innerWidth < 768) {
+                          toggleSidebar();
+                        }
+                      }}
+                    >
+                      <div className="avatar">
+                        <div className="w-12 rounded-full">
+                          <img
+                            src={otherUser.profilePic || "/avatar.png"}
+                            alt={otherUser.fullName || "User"}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-1 flex-1 min-w-0">
-                      <div className="flex items-center justify-between w-full">
-                        <div className="font-medium truncate flex items-center gap-2">
-                          {otherUser.fullName || "User"}
-                          {otherUser._id && Array.isArray(onlineUsers) && onlineUsers.includes(otherUser._id) && (
-                            <div className="status status-lg status-success" />
+                      <div className="flex flex-col gap-1 flex-1 min-w-0">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="font-medium truncate flex items-center gap-2">
+                            {otherUser.fullName || "User"}
+                            {otherUser._id && Array.isArray(onlineUsers) && onlineUsers.includes(otherUser._id) && (
+                              <div className="status status-lg status-success" />
+                            )}
+                          </div>
+                          {recentMsg.unreadCount > 0 && (
+                            <div className="badge badge-sm badge-primary">{recentMsg.unreadCount}</div>
                           )}
                         </div>
-                        {recentMsg.unreadCount > 0 && (
-                          <div className="badge badge-sm badge-primary">{recentMsg.unreadCount}</div>
+                        {recentMsg.lastMessage && (
+                          <div className="flex justify-between items-center w-full">
+                            <p className="text-xs text-base-content/70 truncate">
+                              {recentMsg.lastMessage.text || "Sent an image"}
+                            </p>
+                            <div className="text-xs text-base-content/50 whitespace-nowrap ml-1">
+                              {recentMsg.lastMessage.createdAt &&
+                              !isNaN(new Date(recentMsg.lastMessage.createdAt))
+                                ? formatTimeAgo(new Date(recentMsg.lastMessage.createdAt))
+                                : "Just now"}
+                            </div>
+                          </div>
                         )}
                       </div>
-                      {recentMsg.lastMessage && (
-                        <div className="flex justify-between items-center w-full">
-                          <p className="text-xs text-base-content/70 truncate">
-                            {recentMsg.lastMessage.text || "Sent an image"}
-                          </p>
-                          <div className="text-xs text-base-content/50 whitespace-nowrap ml-1">
-                            {recentMsg.lastMessage.createdAt &&
-                            !isNaN(new Date(recentMsg.lastMessage.createdAt))
-                              ? formatTimeAgo(new Date(recentMsg.lastMessage.createdAt))
-                              : "Just now"}
-                          </div>
-                        </div>
-                      )}
                     </div>
+                    
+                    {/* Delete button */}
+                    {showDeleteConfirm === recentMsg.chatSessionId ? (
+                      <div className="flex items-center gap-1">
+                        <button 
+                          className="btn btn-xs btn-error"
+                          onClick={() => handleDeleteChatSession(recentMsg.chatSessionId)}
+                        >
+                          Delete
+                        </button>
+                        <button 
+                          className="btn btn-xs"
+                          onClick={() => setShowDeleteConfirm(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        className="btn btn-ghost btn-xs btn-circle"
+                        onClick={() => setShowDeleteConfirm(recentMsg.chatSessionId)}
+                        title="Delete chat session"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 );
               })
@@ -317,36 +361,47 @@ const SideBar = ({ toggleSidebar }) => {
               No active chats
             </p>
           )
-        ) : // Display friends
-        Array.isArray(friends) && friends.length > 0 ? (
-          friends
-            .filter((user) =>
-              user?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-            .map((user) => (
-              <div
-                key={user._id}
-                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-base-200 ${selectedUser?._id === user._id ? "bg-base-200" : ""}`}
-                onClick={() => handleUserSelect(user)}
-              >
-                <div className="avatar">
-                  <div className="w-12 rounded-full">
-                    <img
-                      src={user.profilePic || "/avatar.png"}
-                      alt={user.fullName}
-                    />
+        ) : (
+          // Display friends
+          Array.isArray(friends) && friends.length > 0 ? (
+            friends
+              .filter((user) =>
+                user?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map((user) => (
+                <div
+                  key={user._id}
+                  className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-base-200 ${selectedUser?._id === user._id ? "bg-base-200" : ""}`}
+                  onClick={() => handleUserSelect(user)}
+                >
+                  <div className="avatar">
+                    <div className="w-12 rounded-full">
+                      <img
+                        src={user.profilePic || "/avatar.png"}
+                        alt={user.fullName || "User"}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium flex items-center gap-2">
+                        {user.fullName || "User"}
+                        {user._id && Array.isArray(onlineUsers) && onlineUsers.includes(user._id) && (
+                          <div className="status status-lg status-success" />
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-base-content/70">
+                      {user.email || "No email"}
+                    </p>
                   </div>
                 </div>
-                <div>
-                  <h3 className="font-medium">{user.fullName}</h3>
-                  <p className="text-xs text-base-content/70">{user.email}</p>
-                </div>
-              </div>
-            ))
-        ) : (
-          <p className="text-center text-base-content/50 mt-4">
-            No friends yet
-          </p>
+              ))
+          ) : (
+            <p className="text-center text-base-content/50 mt-4">
+              No friends yet
+            </p>
+          )
         )}
       </div>
     </div>

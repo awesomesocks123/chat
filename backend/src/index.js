@@ -4,6 +4,7 @@ import messageRoutes from "./routes/message.route.js";
 import friendRoutes from "./routes/friend.routes.js";
 import chatSessionRoutes from "./routes/chatSession.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import blockedUserRoutes from "./routes/blockedUser.routes.js";
 import { connectDB } from "./lib/db.js";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -27,6 +28,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/chat-sessions", chatSessionRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/blocked-users", blockedUserRoutes);
 
 server.listen(5001, () => {
   console.log("server is running on port " + PORT);

@@ -4,7 +4,8 @@ import {
   getUserChatSessions, 
   sendMessage, 
   getChatSessionMessages,
-  createRandomChatMatch
+  createRandomChatMatch,
+  deleteChatSession
 } from "../controllers/chatSession.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 import ChatSession from "../models/chatSession.model.js";
@@ -48,6 +49,9 @@ router.get("/user/:userId", getOrCreateChatSession);
 
 // Get messages for a specific chat session
 router.get("/:sessionId/messages", getChatSessionMessages);
+
+// Delete a chat session
+router.delete("/session/:sessionId", deleteChatSession);
 
 // Send a message in a chat session
 router.post("/:sessionId/messages", sendMessage);
