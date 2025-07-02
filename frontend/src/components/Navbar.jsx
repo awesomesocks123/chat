@@ -20,6 +20,17 @@ export const Navbar = () => {
             </Link>
           </div>
           <div className="flex items-center gap-2">
+            {!authUser && (
+              <>
+                          <Link
+              to={"/"}
+              className={`btn btn-sm gap-2 transition-colors`}
+            >
+              <Smartphone className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign In</span>
+            </Link></>
+            )}
+            
           {authUser && (
               <>
                 <Link to={"/profile"} className={`btn btn-sm gap-2`}>
@@ -32,13 +43,6 @@ export const Navbar = () => {
                 </button>
               </>
             )}
-            <Link
-              to={"/"}
-              className={`btn btn-sm gap-2 transition-colors`}
-            >
-              <Smartphone className="w-4 h-4" />
-              <span className="hidden sm:inline">Sign In</span>
-            </Link>
           <Link
               to={"/settings"}
               className={`btn btn-sm gap-2 transition-colors`}
