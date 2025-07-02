@@ -47,7 +47,12 @@ export const useAuthStore = create((set,get) => ({
       const res = await axiosInstance.post("/auth/login", data);
       set({ authUser: res.data });
       toast.success("Logged in successfully");
-      get().connectSocket()
+      get().connectSocket();
+      
+      // Add a small delay before refreshing to ensure state is updated
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (error) {
       const errMsg =
         error.response?.data?.message || error.message || "Log in failed";
@@ -86,8 +91,13 @@ export const useAuthStore = create((set,get) => ({
       set({ authUser: null });
       toast.success("Logged out successfully");
       get().disconnectSocket();
+      
+      // Add a small delay before refreshing to ensure state is updated
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Error logging out");
     }
   },
   updateProfile: async (data) => {
