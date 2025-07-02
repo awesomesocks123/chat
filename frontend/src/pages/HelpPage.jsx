@@ -735,7 +735,7 @@ export const HelpPage = () => {
               
               {/* Chats section */}
               <div className="collapse collapse-arrow bg-base-100 border-b border-base-300">
-                <input type="checkbox" defaultChecked /> 
+                <input type="checkbox" /> 
                 <div className="collapse-title flex items-center gap-3 py-3">
                   <MessageCircle className="w-5 h-5 text-primary" />
                   <span className="font-medium">Chats</span>
@@ -782,7 +782,7 @@ export const HelpPage = () => {
 
               {/* Safety & Privacy section */}
               <div className="collapse collapse-arrow bg-base-100 border-b border-base-300">
-                <input type="checkbox" defaultChecked /> 
+                <input type="checkbox" /> 
                 <div className="collapse-title flex items-center gap-3 py-3">
                   <Lock className="w-5 h-5 text-primary" />
                   <span className="font-medium">Safety & Privacy</span>
@@ -811,7 +811,7 @@ export const HelpPage = () => {
               
               {/* FAQ section */}
               <div className="collapse collapse-arrow bg-base-100 border-b border-base-300">
-                <input type="checkbox" defaultChecked /> 
+                <input type="checkbox" /> 
                 <div className="collapse-title flex items-center gap-3 py-3">
                   <LucideShieldQuestion className="w-5 h-5 text-primary" />
                   <span className="font-medium">FAQ</span>
