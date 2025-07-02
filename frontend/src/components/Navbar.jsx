@@ -1,7 +1,7 @@
 import React from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Link } from "react-router-dom";
-import { MessageSquare, Settings, User, LogOut } from "lucide-react";
+import { MessageSquare, Settings, User, LogOut, HelpCircle } from "lucide-react";
 export const Navbar = () => {
   const { logout, authUser } = useAuthStore();
   return (
@@ -20,26 +20,32 @@ export const Navbar = () => {
             </Link>
           </div>
           <div className="flex items-center gap-2">
-            <Link
+          {authUser && (
+              <>
+                <Link to={"/profile"} className={`btn btn-sm gap-2`}>
+                  <User className="size-5" />
+                  <span className="hidden sm:inline">Profile</span>
+                </Link>
+                <button className="btn btn-sm gap-2" onClick={logout}>
+                  <LogOut className="size-5" />
+                  <span className="hidden sm:inline">Logout</span>
+                </button>
+              </>
+            )}
+          <Link
               to={"/settings"}
               className={`btn btn-sm gap-2 transition-colors`}
             >
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Settings</span>
             </Link>
-            {authUser && (
-              <>
-                <Link to={"/profile"} className={`btn btn-sm gap-2`}>
-                  <User className="size-5" />
-                  <span className="hidden sm:inline">Profile</span>
-                </Link>
-
-                <button className="flex gap-2 items-center" onClick={logout}>
-                  <LogOut className="size-5" />
-                  <span className="hidden sm:inline">Logout</span>
-                </button>
-              </>
-            )}
+          <Link
+              to={"/help"}
+              className={`btn btn-sm gap-2 transition-colors`}
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">Help</span>
+            </Link>
           </div>
         </div>
       </div>
