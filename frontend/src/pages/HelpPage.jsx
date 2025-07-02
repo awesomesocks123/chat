@@ -428,10 +428,10 @@ const GetStartedContent = () => {
           </button>
         </div>
         
-        <div className="tabs tabs-boxed mb-6">
+        <div className="tabs tabs-boxed mb-6 pointer-events-none">
           <a className="tab tab-active">All Platforms</a>
-          <a className="tab">Android</a>
-          <a className="tab">iOS</a>
+          <a className="tab opacity-50">Android</a>
+          <a className="tab opacity-50">iOS</a>
         </div>
         
         {/* Introduction Section */}
