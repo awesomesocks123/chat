@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ArrowRight, Smartphone, MessageSquare, Building, Phone, Users, Layers, Shield, UserCog, CreditCard, Briefcase } from 'lucide-react';
+import { Search, ArrowRight, Smartphone, MessageSquare,  LucideShieldQuestion, Phone, Users, ChevronRight, Lock, Settings, MessageCircle, MessageCircleQuestion,} from 'lucide-react';
 
 // Introduction component
 const Introduction = () => (
@@ -244,14 +244,30 @@ const BlockingUsers = () => (
     </div>
   </div>
 );
-const ComingSoon = () => (
+
+// Coming Soon component for features that are not yet implemented
+const ComingSoon = ({ title }) => (
   <div className="card bg-base-100">
     <div className="card-body">
-      <h2 className="card-title text-2xl mb-6">Coming Soon</h2>
-      <p className="mb-4">This feature is currently under development and will be available soon.</p>
+      <h2 className="card-title text-2xl mb-6">{title}</h2>
+      
+      <div className="prose max-w-none">
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="bg-primary/10 w-24 h-24 rounded-full flex items-center justify-center mb-6">
+            <MessageSquare className="w-12 h-12 text-primary" />
+          </div>
+          <h3 className="text-2xl font-bold mb-4">Coming Soon</h3>
+          <p className="text-center max-w-md mb-6">
+            We're working hard to bring you this feature. Check back soon for updates on {title.toLowerCase()}.  
+          </p>
+          <div className="badge badge-primary badge-outline p-3">Under Development</div>
+        </div>
+      </div>
     </div>
   </div>
 );
+
+
 
 // Get Started component (default view)
 const GetStarted = () => (
@@ -320,10 +336,6 @@ const GetStarted = () => (
 export const HelpPage = () => {
   const [activeTopic, setActiveTopic] = useState('get-started');
   
-  // Function to handle topic changes
-  const handleTopicChange = (topic) => {
-    setActiveTopic(topic);
-  };
   return (
     <div className="min-h-screen bg-base-100 pt-16">
       <div className="container mx-auto p-4">
@@ -349,6 +361,7 @@ export const HelpPage = () => {
             </div>
             
             <div className="space-y-1">
+              {/* Get Started section */}
               <div className="collapse collapse-arrow bg-base-100 border-b border-base-300">
                 <input type="checkbox" defaultChecked /> 
                 <div className="collapse-title flex items-center gap-3 py-3">
@@ -373,10 +386,11 @@ export const HelpPage = () => {
                 </div>
               </div>
               
+              {/* Chats section */}
               <div className="collapse collapse-arrow bg-base-100 border-b border-base-300">
-                <input type="checkbox" /> 
+                <input type="checkbox" defaultChecked /> 
                 <div className="collapse-title flex items-center gap-3 py-3">
-                  <MessageSquare className="w-5 h-5 text-primary" />
+                  <MessageCircle className="w-5 h-5 text-primary" />
                   <span className="font-medium">Chats</span>
                 </div>
                 <div className="collapse-content pl-12">
@@ -397,51 +411,51 @@ export const HelpPage = () => {
                 </div>
               </div>
               
-              
-              <div className="collapse collapse-arrow bg-base-100 border-b border-base-300">
-                <input type="checkbox" /> 
-                <div className="collapse-title flex items-center gap-3 py-3">
-                  <Phone className="w-5 h-5 text-primary" />
-                  <span className="font-medium">Voice and Video Calls</span>
-                </div>
-                <div className="collapse-content pl-12">
-                  <ul className="space-y-2">
-                    <li 
-                      className={`hover:text-primary cursor-pointer ${activeTopic === 'coming-soon' ? 'text-primary font-medium' : ''}`}
-                      onClick={() => handleTopicChange('coming-soon')}
-                    >Coming Soon</li>
-                  </ul>
+              {/* Voice and Video Calls */}
+              <div className="bg-base-100 border-b border-base-300 cursor-pointer" onClick={() => setActiveTopic('voice-video-calls')}>
+                <div className="flex items-center justify-between py-3 px-3">
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5 text-primary" />
+                    <span className="font-medium">Voice and Video Calls</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4" />
                 </div>
               </div>
               
-              <div className="collapse collapse-arrow bg-base-100 border-b border-base-300">
-                <input type="checkbox" /> 
-                <div className="collapse-title flex items-center gap-3 py-3">
-                  <Users className="w-5 h-5 text-primary" />
-                  <span className="font-medium">Communities & Spaces</span>
+              {/* Communites & Spaces */}
+              <div className="bg-base-100 border-b border-base-300 cursor-pointer" onClick={() => setActiveTopic('communities-spaces')}>
+                <div className="flex items-center justify-between py-3 px-3">
+                  <div className="flex items-center gap-3">
+                    <Users className="w-5 h-5 text-primary" />
+                    <span className="font-medium">Communities & Spaces</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4" />
                 </div>
-                <div className="collapse-content pl-12"></div>
-              </div>
-        
-              
-              <div className="collapse collapse-arrow bg-base-100 border-b border-base-300">
-                <input type="checkbox" /> 
-                <div className="collapse-title flex items-center gap-3 py-3">
-                  <Shield className="w-5 h-5 text-primary" />
-                  <span className="font-medium">Privacy, Safety, and Security</span>
-                </div>
-                <div className="collapse-content pl-12"></div>
-              </div>
-              
-              <div className="collapse collapse-arrow bg-base-100 border-b border-base-300">
-                <input type="checkbox" /> 
-                <div className="collapse-title flex items-center gap-3 py-3">
-                  <UserCog className="w-5 h-5 text-primary" />
-                  <span className="font-medium">Accounts and Account Bans</span>
-                </div>
-                <div className="collapse-content pl-12"></div>
               </div>
 
+              {/* Privacy and Security */}
+              <div className="bg-base-100 border-b border-base-300 cursor-pointer" onClick={() => setActiveTopic('privacy-security')}>
+                <div className="flex items-center justify-between py-3 px-3">
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-primary" />
+                    <span className="font-medium">Privacy and Security</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
+              
+              {/* FAQ */}
+              <div className="bg-base-100 border-b border-base-300 cursor-pointer" onClick={() => setActiveTopic('business-connect')}>
+                <div className="flex items-center justify-between py-3 px-3">
+                  <div className="flex items-center gap-3">
+                    <LucideShieldQuestion className="w-5 h-5 text-primary" />
+                    <span className="font-medium">FAQ</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
+              
+              
             </div>
           </div>
           
@@ -454,7 +468,11 @@ export const HelpPage = () => {
             {activeTopic === 'starting-chat' && <StartingChat />}
             {activeTopic === 'managing-conversations' && <ManagingConversations />}
             {activeTopic === 'blocking-users' && <BlockingUsers />}
-            {activeTopic === 'coming-soon' && <ComingSoon />}
+            {activeTopic === 'voice-video-calls' && <ComingSoon title="Voice and Video Calls" />}
+            {activeTopic === 'privacy-security' && <ComingSoon title="Privacy and Security" />}
+            {activeTopic === 'settings-preferences' && <ComingSoon title="Settings and Preferences" />}
+            {activeTopic === 'business-connect' && <ComingSoon title="Connect with Businesses" />}
+            {activeTopic === 'payments' && <ComingSoon title="Payments" />}
           </div>
         </div>
       </div>
