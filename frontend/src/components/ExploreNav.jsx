@@ -8,7 +8,7 @@ const ExploreNav = () => {
   const categories = ["Gaming", "Music", "Movie", "TV Show"];
   
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col bg-primary-100">
       <div className="pt-20">
         <div className="flex justify-center items-center">
           <div className="navbar bg-base-200 shadow-sm max-w-5xl w-full rounded-2xl">

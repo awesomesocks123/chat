@@ -14,7 +14,7 @@ const ExploreContent = ({ category }) => {
         // For now, we'll simulate an API response with mock data
         const mockApiCall = new Promise((resolve) => {
           setTimeout(() => {
-            const mockData = Array(8).fill().map((_, i) => ({
+            const mockData = Array(6).fill().map((_, i) => ({
               id: `${category}-${i}`,
               name: `${category} Room ${i + 1}`,
               participants: Math.floor(Math.random() * 50) + 5,
@@ -63,7 +63,7 @@ const ExploreContent = ({ category }) => {
       <h2 className="text-2xl font-bold mb-6">{category} Rooms</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {rooms.map((room) => (
-          <div key={room.id} className="card bg-base-200 w-86 hover:bg-base-300 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden ">
+          <div key={room.id} className="card bg-accent-100 w-86 hover:bg-base-300 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden ">
             <figure className="relative">
               <img
                 src="https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp"

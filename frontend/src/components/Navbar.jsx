@@ -27,43 +27,44 @@ export const Navbar = () => {
               <h1 className="text-lg font-bold">Chamo</h1>
             </Link>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
             {!authUser && (
               <>
-                <Link to={"/"} className={`btn btn-sm gap-2 transition-colors`}>
-                  <Smartphone className="w-4 h-4" />
-                  <span className="hidden sm:inline">Sign In</span>
+                <Link to={"/"} className={`btn btn-sm btn-ghost`}>
+                  <Smartphone className="w-5 h-5" />
+                  <span className="hidden md:inline ml-1">Sign In</span>
+                </Link>
+                <Link to={"/help"} className={`btn btn-sm btn-ghost`}>
+                  <HelpCircle className="w-5 h-5" />
+                  <span className="hidden md:inline ml-1">Help</span>
                 </Link>
               </>
             )}
 
             {authUser && (
               <>
-                <Link to={"/explore"} className={`btn btn-sm gap-2`}>
-                  <Compass className="size-5" />
-                  <span className="hidden sm:inline">Explore</span>
+                <Link to={"/explore"} className={`btn btn-sm btn-ghost`}>
+                  <Compass className="w-5 h-5" />
+                  <span className="hidden md:inline ml-1">Explore</span>
                 </Link>
-                <Link to={"/profile"} className={`btn btn-sm gap-2`}>
-                  <User className="size-5" />
-                  <span className="hidden sm:inline">Profile</span>
+                <Link to={"/"} className={`btn btn-sm btn-ghost`}>
+                  <MessageSquare className="w-5 h-5" />
+                  <span className="hidden md:inline ml-1">Chat</span>
                 </Link>
-                <button className="btn btn-sm gap-2" onClick={logout}>
-                  <LogOut className="size-5" />
-                  <span className="hidden sm:inline">Logout</span>
+                <Link to={"/settings"} className={`btn btn-sm btn-ghost`}>
+                  <Settings className="w-5 h-5" />
+                  <span className="hidden md:inline ml-1">Settings</span>
+                </Link>
+                <Link to={"/help"} className={`btn btn-sm btn-ghost`}>
+                  <HelpCircle className="w-5 h-5" />
+                  <span className="hidden md:inline ml-1">Help</span>
+                </Link>
+                <button className="btn btn-sm btn-ghost" onClick={logout}>
+                  <LogOut className="w-5 h-5" />
+                  <span className="hidden md:inline ml-1">Logout</span>
                 </button>
               </>
             )}
-            <Link
-              to={"/settings"}
-              className={`btn btn-sm gap-2 transition-colors`}
-            >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Settings</span>
-            </Link>
-            <Link to={"/help"} className={`btn btn-sm gap-2 transition-colors`}>
-              <HelpCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">Help</span>
-            </Link>
           </div>
         </div>
       </div>
