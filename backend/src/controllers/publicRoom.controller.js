@@ -1,4 +1,5 @@
 import publicRoom from "../models/publicRoom.model.js";
+import Message from "../models/message.model.js"
 
 export const getAllPublicRooms = async (req, res) => {
     try {
@@ -29,11 +30,11 @@ export const getRoomsByCategory = async (req, res) => {
 
 export const joinRoom = async (req, res) => {
     try {
-        const { roomID } = req.params; // from the url
+        const { roomId } = req.params; // from the url
         const userId = req.user._id; // from auth middleware
 
         // Find the room
-        const room = await PublicRoom.findbyId(roomId);
+        const room = await PublicRoom.findById(roomId);
         if (!room) {
             return res.status(404).json({ error: `Failed to get ${req.params}` })
         }
@@ -95,33 +96,54 @@ export const leaveRoom = async (req, res) => {
 
 export const sendMessagesToRoom = async (req, res) => {
     try {
-        const { roomID } = req.body;
-        const { id: receiverId } = req.params;
-        const senderId = req.user._id;
+        const { roomId } = req.params;
+        const userId = req.user._id;
+        const { text } = req.body;
+
+        const room = await PublicRoom.findById(roomId)
 
         const newMessage = new Message({
-            senderId,
+            senderId: userId,
             text,
             createdAt: new Date()
         })
 
-        await newMessage.save();
+        room.messages.push(newMessage);
+        room.lastMessage = newMessage;
+        await room.save();
 
-        req.io.to(roomId).emit("newMessage", newMessage)
+        const populateRoom = await PublicRoom.findbyId(roomId)
+            .populate("messages.sender", "fullName profilePic")
+            .select("messages");
 
-        res.status(200).json(newMessage);
+        const sentMessage = populateRoom.messages[populateRoom.messages.length - 1];
+
+        req.io.to(roomId).emit("newRoomMessage", { message: sentMessage, roomId })
+
+        return res.status(201).json(sentMessage)
 
     } catch (error) {
         console.error("Error in sendMessage", error);
-        res.status(500).json({ error: "Internal server error" })
+        return res.status(500).json({ error: "Internal server error" })
 
     }
 }
 
 export const getRoomMessages = async (req, res) => {
     try {
+        const { roomId } = req.params;
+        const room = await PublicRoom.findById(roomId).populate("messages.sender", "fullName profilePic");
+
+        if (!room) {
+            return res.status(404).json({ error: `Room not found` });
+        }
+
+        return res.status(200).json(room.messages)
 
     } catch (error) {
+
+        console.error("Error in getRoomMessages", error);
+        return res.status(500).json({ error: "Internal server error" })
 
     }
 }
