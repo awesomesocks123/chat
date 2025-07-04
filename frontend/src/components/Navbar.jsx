@@ -1,7 +1,15 @@
 import React from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Link } from "react-router-dom";
-import { MessageSquare, Settings, User, LogOut, HelpCircle, Smartphone } from "lucide-react";
+import {
+  MessageSquare,
+  Settings,
+  User,
+  LogOut,
+  HelpCircle,
+  Smartphone,
+  Compass,
+} from "lucide-react";
 export const Navbar = () => {
   const { logout, authUser } = useAuthStore();
   return (
@@ -22,17 +30,19 @@ export const Navbar = () => {
           <div className="flex items-center gap-2">
             {!authUser && (
               <>
-                          <Link
-              to={"/"}
-              className={`btn btn-sm gap-2 transition-colors`}
-            >
-              <Smartphone className="w-4 h-4" />
-              <span className="hidden sm:inline">Sign In</span>
-            </Link></>
+                <Link to={"/"} className={`btn btn-sm gap-2 transition-colors`}>
+                  <Smartphone className="w-4 h-4" />
+                  <span className="hidden sm:inline">Sign In</span>
+                </Link>
+              </>
             )}
-            
-          {authUser && (
+
+            {authUser && (
               <>
+                <Link to={"/explore"} className={`btn btn-sm gap-2`}>
+                  <Compass className="size-5" />
+                  <span className="hidden sm:inline">Explore</span>
+                </Link>
                 <Link to={"/profile"} className={`btn btn-sm gap-2`}>
                   <User className="size-5" />
                   <span className="hidden sm:inline">Profile</span>
@@ -43,17 +53,14 @@ export const Navbar = () => {
                 </button>
               </>
             )}
-          <Link
+            <Link
               to={"/settings"}
               className={`btn btn-sm gap-2 transition-colors`}
             >
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Settings</span>
             </Link>
-          <Link
-              to={"/help"}
-              className={`btn btn-sm gap-2 transition-colors`}
-            >
+            <Link to={"/help"} className={`btn btn-sm gap-2 transition-colors`}>
               <HelpCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Help</span>
             </Link>

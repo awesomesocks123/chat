@@ -12,15 +12,15 @@ import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 import { useThemeStore } from "./store/useThemeStore.js";
 import { HelpPage } from "./pages/HelpPage";
+import ExplorePage from "./pages/ExplorePage.jsx";
 
 function App() {
-  const { authUser, checkAuth, isCheckingAuth,onlineUsers } = useAuthStore();
+  const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
   const { theme } = useThemeStore();
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-
 
   if (isCheckingAuth && !authUser)
     return (
@@ -50,7 +50,11 @@ function App() {
           path="/profile"
           element={authUser ? <ProfilePage /> : <Navigate to="/login" />}
         />
-<Route path="/help" element={<HelpPage />} />
+        <Route
+          path="/explore"
+          element={authUser ? <ExplorePage /> : <Navigate to="/login" />}
+        />
+        <Route path="/help" element={<HelpPage />} />
       </Routes>
       <Toaster />
     </div>
