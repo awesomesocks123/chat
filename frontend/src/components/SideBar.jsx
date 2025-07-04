@@ -327,32 +327,6 @@ const SideBar = ({ toggleSidebar }) => {
                         )}
                       </div>
                     </div>
-                    
-                    {/* Delete button */}
-                    {showDeleteConfirm === recentMsg.chatSessionId ? (
-                      <div className="flex items-center gap-1">
-                        <button 
-                          className="btn btn-xs btn-error"
-                          onClick={() => handleDeleteChatSession(recentMsg.chatSessionId)}
-                        >
-                          Delete
-                        </button>
-                        <button 
-                          className="btn btn-xs"
-                          onClick={() => setShowDeleteConfirm(null)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button 
-                        className="btn btn-ghost btn-xs btn-circle"
-                        onClick={() => setShowDeleteConfirm(recentMsg.chatSessionId)}
-                        title="Delete chat session"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 );
               })
