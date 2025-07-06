@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { ChevronLeft, UserPlus, UserCheck, X, Info, AlertTriangle, Flag, UserX, Trash2 } from "lucide-react";
+import { ChevronLeft, UserPlus, UserCheck, X, Info, AlertTriangle, Flag, UserX, Trash2, Users, MessageSquare } from "lucide-react";
 import toast from "react-hot-toast";
-const ChatHeader = ({ toggleSidebar }) => {
+const ChatHeader = ({ toggleSidebar, isPublicRoom, roomName, toggleParticipants }) => {
   const { 
     selectedUser, 
     setSelectedUser, 
@@ -12,7 +12,10 @@ const ChatHeader = ({ toggleSidebar }) => {
     getFriends, 
     selectedChatSession, 
     setSelectedChatSession,
-    deleteChatSession 
+    deleteChatSession,
+    selectedPublicRoom,
+    setSelectedPublicRoom,
+    leavePublicRoom
   } = useChatStore();
   const { onlineUsers, authUser } = useAuthStore();
   const [isFriend, setIsFriend] = useState(false);
@@ -104,6 +107,20 @@ const ChatHeader = ({ toggleSidebar }) => {
       toast.error("Failed to delete chat");
     }
   };
+  // Handle leaving a public room
+  const handleLeaveRoom = async () => {
+    if (selectedPublicRoom) {
+      try {
+        await leavePublicRoom(selectedPublicRoom._id);
+        toast.success(`Left ${selectedPublicRoom.name}`);
+        setSelectedPublicRoom(null);
+      } catch (error) {
+        console.error("Error leaving room:", error);
+        toast.error("Failed to leave room");
+      }
+    }
+  };
+
   return (
     <div className="p-2.5 border-b border-base-300">
       <div className="flex items-center justify-between">
@@ -116,8 +133,14 @@ const ChatHeader = ({ toggleSidebar }) => {
             <ChevronLeft size={20} />
           </button>
           
-          {/* Avatar */}
-          {selectedUser && (
+          {/* Public Room Icon or User Avatar */}
+          {isPublicRoom ? (
+            <div className="avatar">
+              <div className="size-10 rounded-full bg-primary flex items-center justify-center text-primary-content">
+                <MessageSquare size={20} />
+              </div>
+            </div>
+          ) : selectedUser && (
             <div className="avatar">
               <div className="size-10 rounded-full relative">
                 <img
@@ -127,8 +150,16 @@ const ChatHeader = ({ toggleSidebar }) => {
               </div>
             </div>
           )}
-          {/* User Info */}
-          {selectedUser && (
+          
+          {/* Room Info or User Info */}
+          {isPublicRoom ? (
+            <div>
+              <h3 className="font-medium">{roomName || selectedPublicRoom?.name}</h3>
+              <p className="text-xs text-base-content/70">
+                {selectedPublicRoom?.category} • Public Room
+              </p>
+            </div>
+          ) : selectedUser && (
             <div>
               <h3 className="font-medium">{selectedUser.fullName}</h3>
               <div className="flex items-center gap-1.5">
@@ -141,99 +172,126 @@ const ChatHeader = ({ toggleSidebar }) => {
                   {(onlineUsers ?? []).includes(selectedUser?._id)
                     ? "Online"
                     : "Offline"}
-              </p>
+                </p>
               </div>
             </div>
           )}
         </div>
+        
         <div className="flex items-center gap-2">
-          {/* Add to Friends button */}
-          {selectedUser && !isFriend ? (
-            <button
-              className="btn btn-sm btn-outline btn-primary"
-              onClick={async () => {
-                setIsAdding(true);
-                await addFriend(selectedUser._id);
-                await getFriends();
-                setIsAdding(false);
-              }}
-              disabled={isAdding}
-            >
-              <UserPlus size={16} className={isAdding ? "animate-spin" : ""} />
-              <span className="hidden md:inline">Add Friend</span>
-            </button>
-          ) : selectedUser && isFriend ? (
-            <button className="btn btn-sm btn-ghost btn-disabled">
-              <UserCheck size={16} className="text-success" />
-              <span className="hidden md:inline">Friends</span>
-            </button>
-          ) : null}
-          
-          {/* Info button with dropdown */}
-          {selectedUser && selectedChatSession && (
-            <div className="relative info-dropdown">
+          {/* Public Room Controls */}
+          {isPublicRoom && (
+            <>
               <button
-                className="btn btn-sm btn-ghost btn-circle hover:bg-base-200 hover:text-primary transition-colors"
-                onClick={() => setShowDropdown(!showDropdown)}
+                className="btn btn-sm btn-ghost"
+                onClick={toggleParticipants}
               >
-                <Info size={16} />
+                <Users size={16} />
+                <span className="hidden md:inline">Participants</span>
               </button>
               
-              {showDropdown && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-base-100 shadow-lg rounded-lg z-50 border border-base-300">
-                  <ul className="menu p-2 text-sm">
-                    <li>
-                      <button 
-                        onClick={() => {
-                          setShowDropdown(false);
-                          setShowReportModal(true);
-                        }}
-                        className="flex items-center gap-2"
-                      >
-                        <Flag size={14} />
-                        Report User
-                      </button>
-                    </li>
-                    <li>
-                      <button 
-                        onClick={() => {
-                          setShowDropdown(false);
-                          setShowBlockModal(true);
-                        }}
-                        className="flex items-center gap-2 text-error"
-                      >
-                        <UserX size={14} />
-                        Block User
-                      </button>
-                    </li>
-                    <li>
-                      <button 
-                        onClick={() => {
-                          setShowDropdown(false);
-                          setShowDeleteModal(true);
-                        }}
-                        className="flex items-center gap-2"
-                      >
-                        <Trash2 size={14} />
-                        Delete Chat
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </div>
+              <button
+                className="btn btn-sm btn-ghost text-error"
+                onClick={handleLeaveRoom}
+              >
+                <X size={16} />
+                <span className="hidden md:inline">Leave</span>
+              </button>
+            </>
           )}
           
-          {/* X button to close out */}
-          <button
-            className="btn btn-sm btn-ghost btn-circle hover:bg-base-200 hover:text-primary transition-colors"
-            onClick={() => {
-              setSelectedUser(null);
-              setSelectedChatSession(null);
-            }}
-          >
-            <X size={16} />
-          </button>
+          {/* Private Chat Controls */}
+          {!isPublicRoom && (
+            <>
+              {/* Add to Friends button */}
+              {selectedUser && !isFriend ? (
+                <button
+                  className="btn btn-sm btn-outline btn-primary"
+                  onClick={async () => {
+                    setIsAdding(true);
+                    await addFriend(selectedUser._id);
+                    await getFriends();
+                    setIsAdding(false);
+                  }}
+                  disabled={isAdding}
+                >
+                  <UserPlus size={16} className={isAdding ? "animate-spin" : ""} />
+                  <span className="hidden md:inline">Add Friend</span>
+                </button>
+              ) : selectedUser && isFriend ? (
+                <button className="btn btn-sm btn-ghost btn-disabled">
+                  <UserCheck size={16} className="text-success" />
+                  <span className="hidden md:inline">Friends</span>
+                </button>
+              ) : null}
+              
+              {/* Info button with dropdown */}
+              {selectedUser && selectedChatSession && (
+                <div className="relative info-dropdown">
+                  <button
+                    className="btn btn-sm btn-ghost btn-circle hover:bg-base-200 hover:text-primary transition-colors"
+                    onClick={() => setShowDropdown(!showDropdown)}
+                  >
+                    <Info size={16} />
+                  </button>
+                  
+                  {showDropdown && (
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-base-100 shadow-lg rounded-lg z-50 border border-base-300">
+                      <ul className="menu p-2 text-sm">
+                        <li>
+                          <button 
+                            onClick={() => {
+                              setShowDropdown(false);
+                              setShowReportModal(true);
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <Flag size={14} />
+                            Report User
+                          </button>
+                        </li>
+                        <li>
+                          <button 
+                            onClick={() => {
+                              setShowDropdown(false);
+                              setShowBlockModal(true);
+                            }}
+                            className="flex items-center gap-2 text-error"
+                          >
+                            <UserX size={14} />
+                            Block User
+                          </button>
+                        </li>
+                        <li>
+                          <button 
+                            onClick={() => {
+                              setShowDropdown(false);
+                              setShowDeleteModal(true);
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <Trash2 size={14} />
+                            Delete Chat
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* X button to close out */}
+              <button
+                className="btn btn-sm btn-ghost btn-circle hover:bg-base-200 hover:text-primary transition-colors"
+                onClick={() => {
+                  setSelectedUser(null);
+                  setSelectedChatSession(null);
+                }}
+              >
+                <X size={16} />
+              </button>
+            </>
+          )}
         </div>
       </div>
       

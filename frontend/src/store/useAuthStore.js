@@ -31,7 +31,15 @@ export const useAuthStore = create((set,get) => ({
 
     try {
       const res = await axiosInstance.post("/auth/signup", data);
-      set({ authUser: res.data });
+      
+      // Store the user data
+      set({ authUser: res.data.user || res.data });
+      
+      // Store the token if it exists
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+      }
+      
       toast.success("Account created successfully");
     } catch (error) {
       const errMsg =
@@ -45,7 +53,16 @@ export const useAuthStore = create((set,get) => ({
     set({ isLoggingIn: true });
     try {
       const res = await axiosInstance.post("/auth/login", data);
-      set({ authUser: res.data });
+      
+      // Store user data
+      set({ authUser: res.data.user || res.data });
+      
+      // Store the token if it exists
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        console.log('Token stored in localStorage:', res.data.token);
+      }
+      
       toast.success("Logged in successfully");
       get().connectSocket();
       
@@ -89,6 +106,10 @@ export const useAuthStore = create((set,get) => ({
     try {
       await axiosInstance.post("/auth/logout");
       set({ authUser: null });
+      
+      // Clear token from localStorage
+      localStorage.removeItem('token');
+      
       toast.success("Logged out successfully");
       get().disconnectSocket();
       
@@ -98,6 +119,9 @@ export const useAuthStore = create((set,get) => ({
       }, 500);
     } catch (error) {
       toast.error(error.response?.data?.message || "Error logging out");
+      
+      // Clear token even if logout API fails
+      localStorage.removeItem('token');
     }
   },
   updateProfile: async (data) => {
