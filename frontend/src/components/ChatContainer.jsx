@@ -5,6 +5,7 @@ import MessageInput from "./MessageInput";
 import MessagesSkeleton from "./MessagesSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 
+
 const ChatContainer = ({ toggleSidebar }) => {
   const { 
     messages, 
@@ -13,7 +14,7 @@ const ChatContainer = ({ toggleSidebar }) => {
     selectedUser, 
     selectedChatSession,
     subscribeToMessages, 
-    unsubscribeToMessages 
+    unsubscribeToMessages
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messagesEndRef = useRef(null);
@@ -28,25 +29,27 @@ const ChatContainer = ({ toggleSidebar }) => {
   useEffect(() => {
     if (selectedChatSession && selectedChatSession._id) {
       // If we have a selected chat session, get messages for it
+      console.log("Loading messages for chat session:", selectedChatSession._id);
       getMessages(selectedChatSession._id);
       subscribeToMessages();
       return () => unsubscribeToMessages();
-    } else if (selectedUser && selectedUser._id) {
-      // If we only have a selected user, get or create a chat session
-      getMessages(selectedUser._id);
-      subscribeToMessages();
-      return () => unsubscribeToMessages();
     }
-  }, [selectedUser, selectedChatSession, getMessages, subscribeToMessages, unsubscribeToMessages]);
+    // We no longer try to get messages using just the selectedUser
+    // This was causing confusion between user IDs and chat session IDs
+  }, [selectedChatSession, getMessages, subscribeToMessages, unsubscribeToMessages]);
 
-  if (isMessagesLoading)
+  // Loading state for private chat
+  if (isMessagesLoading) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
         <ChatHeader toggleSidebar={toggleSidebar} />
         <MessagesSkeleton />
-        <MessageInput />
+        <MessageInput isPublicRoom={false} />
       </div>
     );
+  }
+  
+  // Render regular private chat
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader toggleSidebar={toggleSidebar} />
@@ -71,20 +74,22 @@ const ChatContainer = ({ toggleSidebar }) => {
             }
           }
           
-          // Add a debug class to help identify message origin
-          const debugClass = message.isTemp ? 'temp-message' : (isSent ? 'sent-message' : 'received-message');
-          
           return (
             <div
-              key={message._id}
-              className={`chat ${isSent ? "chat-end" : "chat-start"} ${debugClass}`}
+              key={message._id || `temp-${Date.now()}-${Math.random()}`}
+              className={`chat ${isSent ? "chat-end" : "chat-start"}`}
             >
-              <div
-                className={`
-                  max-w-[80%] rounded-xl p-3 shadow-sm
-                  ${isSent ? "bg-primary text-primary-content" : "bg-base-200"}
-                `}
-              >
+              {!isSent && (
+                <div className="chat-image avatar">
+                  <div className="w-10 rounded-full">
+                    <img src={message.sender?.profilePic || "/avatar.png"} alt={message.sender?.fullName || "User"} />
+                  </div>
+                </div>
+              )}
+              <div className="chat-header mb-1">
+                {!isSent && <span className="text-xs font-bold">{message.sender?.fullName || "Unknown User"}</span>}
+              </div>
+              <div className={`chat-bubble ${isSent ? "chat-bubble-primary" : ""}`}>
                 {message.image && (
                   <img
                     src={message.image}
@@ -92,21 +97,19 @@ const ChatContainer = ({ toggleSidebar }) => {
                     className='sm:max-w-[200px] rounded-md mb-2'
                   />
                 )}
-                {message.text && <p className='text-sm'>{message.text}</p>}
-                <p
-                  className={`text-[10px] mt-1.5 ${isSent ? "text-primary-content/70" : "text-base-content/70"}`}
-                >
-                  {message.createdAt && !isNaN(new Date(message.createdAt)) 
-                    ? new Date(message.createdAt).toLocaleTimeString("en-US", {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })
-                    : new Date().toLocaleTimeString("en-US", {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })
-                  }
-                </p>
+                {message.text && <p>{message.text}</p>}
+              </div>
+              <div className="chat-footer opacity-50 text-xs">
+                {message.createdAt && !isNaN(new Date(message.createdAt)) 
+                  ? new Date(message.createdAt).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })
+                  : new Date().toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })
+                }
               </div>
             </div>
           );
@@ -117,7 +120,7 @@ const ChatContainer = ({ toggleSidebar }) => {
         )}
         <div ref={messagesEndRef} />
       </div>
-      <MessageInput />
+      <MessageInput isPublicRoom={false} />
     </div>
   );
 };
