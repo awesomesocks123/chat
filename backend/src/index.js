@@ -10,7 +10,8 @@ import { connectDB } from "./lib/db.js";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import {app, server} from "./lib/socket.js"
+import {app, server} from "./lib/socket.js";
+import { attachSocketIO } from "./middleware/socket.middleware.js";
 dotenv.config();
 
 const PORT = process.env.PORT;
@@ -23,6 +24,9 @@ app.use(
     credentials: true,
   })
 );
+
+// Attach socket.io to all requests
+app.use(attachSocketIO);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
