@@ -65,25 +65,39 @@ io.on("connection", (socket) => {
     socket.join(roomId);
     console.log(`User ${userId} joining public room ${roomId}`);
 
-    if (!userSocketMap[userId]) {
-      userSocketMap[userId] = [];
-    }
-    if (!userSocketMap[userId].includes(roomId)) {
-      userSocketMap[userId].push(roomId);
-    }
+    // userSocketMap should just store the socketId for each userId
+    // No need to track rooms here as socket.rooms already does this
+    userSocketMap[userId] = socket.id;
+    
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
 
   //leave public room
   socket.on("leavePublicRoom", (roomId) => {
     socket.leave(roomId);
-    delete userSocketMap[userId];
+    // Don't delete the user from userSocketMap, they're just leaving a room
+    // Only remove them on full disconnect
     console.log(`User ${userId} leaving public room ${roomId}`);
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
-
-
-
+  
+  // Leave all public rooms
+  socket.on("leaveAllRooms", () => {
+    // Get all rooms this socket is in
+    const rooms = Array.from(socket.rooms);
+    
+    // The first room is always the socket ID, so we skip it
+    for (let i = 1; i < rooms.length; i++) {
+      const room = rooms[i];
+      // Only leave rooms that are not chat sessions
+      if (!room.startsWith('chat_session_')) {
+        socket.leave(room);
+        console.log(`User ${userId} leaving room ${room}`);
+      }
+    }
+    
+    console.log(`User ${userId} left all public rooms`);
+  });
 
 });
 
