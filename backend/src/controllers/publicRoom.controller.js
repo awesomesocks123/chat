@@ -1,9 +1,9 @@
-import publicRoom from "../models/publicRoom.model.js";
+import PublicRoom from "../models/publicRoom.model.js";
 import Message from "../models/message.model.js"
 
 export const getAllPublicRooms = async (req, res) => {
     try {
-        const rooms = await publicRoom.find({ isPublic: true }).select("name description category participants").lean()
+        const rooms = await PublicRoom.find({ isPublic: true }).select("name description category participants").lean()
         const roomsWithCounts = rooms.map(room => ({ ...room, participantCount: room.participants.length }))
         return res.status(200).json(roomsWithCounts)
     } catch (error) {
@@ -94,7 +94,7 @@ export const leaveRoom = async (req, res) => {
     }
 }
 
-export const sendMessagesToRoom = async (req, res) => {
+export const sendMessageToRoom = async (req, res) => {
     try {
         const { roomId } = req.params;
         const userId = req.user._id;
@@ -112,7 +112,7 @@ export const sendMessagesToRoom = async (req, res) => {
         room.lastMessage = newMessage;
         await room.save();
 
-        const populateRoom = await PublicRoom.findbyId(roomId)
+        const populateRoom = await PublicRoom.findById(roomId)
             .populate("messages.sender", "fullName profilePic")
             .select("messages");
 

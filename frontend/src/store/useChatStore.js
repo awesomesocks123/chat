@@ -15,6 +15,11 @@ export const useChatStore = create((set, get) => ({
   selectedChatSession: null,
   blockedUsers: [],
   
+  // Public rooms state
+  publicRooms: [],
+  selectedPublicRoom: null,
+  publicRoomMessages: [],
+  
   setViewMode: (viewMode) => set({ viewMode }),
   
   getUsers: async () => {
@@ -390,5 +395,113 @@ export const useChatStore = create((set, get) => ({
     socket.off("newMessage");
     
     console.log("Unsubscribed from messages");
-  }
+  },
+  
+  // Get all public rooms
+  getPublicRooms: async () => {
+    try {
+      const res = await axiosInstance.get("/public-rooms");
+      set({ publicRooms: res.data });
+      return res.data;
+    } catch (error) {
+      console.error("Error getting public rooms:", error);
+      return [];
+    }
+  },
+
+  // Get rooms by category
+  getPublicRoomsByCategory: async (category) => {
+    try {
+      const res = await axiosInstance.get(`/public-rooms/category/${category}`);
+      set({ publicRooms: res.data });
+      return res.data;
+    } catch (error) {
+      console.error(`Error getting ${category} rooms:`, error);
+      return [];
+    }
+  },
+
+  // Join a public room
+  joinPublicRoom: async (roomId) => {
+    try {
+      const res = await axiosInstance.post(`/public-rooms/join/${roomId}`);
+      
+      // Get messages for this room
+      get().getPublicRoomMessages(roomId);
+      
+      // Join the socket room
+      const socket = useAuthStore.getState().socket;
+      if (socket) {
+        socket.emit("joinPublicRoom", roomId);
+      }
+      
+      return res.data;
+    } catch (error) {
+      console.error("Error joining room:", error);
+      toast.error(error.response?.data?.error || "Failed to join room");
+      return null;
+    }
+  },
+
+  // Leave a public room
+  leavePublicRoom: async (roomId) => {
+    try {
+      const res = await axiosInstance.post(`/public-rooms/leave/${roomId}`);
+      
+      // Leave the socket room
+      const socket = useAuthStore.getState().socket;
+      if (socket) {
+        socket.emit("leavePublicRoom", roomId);
+      }
+      
+      return res.data;
+    } catch (error) {
+      console.error("Error leaving room:", error);
+      toast.error(error.response?.data?.error || "Failed to leave room");
+      return null;
+    }
+  },
+
+  // Get messages for a public room
+  getPublicRoomMessages: async (roomId) => {
+    try {
+      const res = await axiosInstance.get(`/public-rooms/${roomId}`);
+      set({ publicRoomMessages: res.data });
+      
+      // Subscribe to this room's messages
+      const socket = useAuthStore.getState().socket;
+      if (socket) {
+        socket.on("newRoomMessage", (data) => {
+          if (data.roomId === roomId) {
+            set((state) => ({
+              publicRoomMessages: [...state.publicRoomMessages, data.message]
+            }));
+          }
+        });
+      }
+      
+      return res.data;
+    } catch (error) {
+      console.error("Error getting room messages:", error);
+      return [];
+    }
+  },
+
+  // Send message to a public room
+  sendPublicRoomMessage: async (roomId, message) => {
+    try {
+      const res = await axiosInstance.post(`/public-rooms/send/${roomId}`, {
+        text: message
+      });
+      
+      return res.data;
+    } catch (error) {
+      console.error("Error sending message to room:", error);
+      toast.error(error.response?.data?.error || "Failed to send message");
+      return null;
+    }
+  },
+
+  // Set selected public room
+  setSelectedPublicRoom: (room) => set({ selectedPublicRoom: room })
 }));

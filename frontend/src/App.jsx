@@ -13,6 +13,7 @@ import { Toaster } from "react-hot-toast";
 import { useThemeStore } from "./store/useThemeStore.js";
 import { HelpPage } from "./pages/HelpPage";
 import ExplorePage from "./pages/ExplorePage.jsx";
+import PublicRoomPage from "./pages/PublicRoomPage.jsx";
 
 function App() {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
@@ -53,6 +54,10 @@ function App() {
         <Route
           path="/explore"
           element={authUser ? <ExplorePage /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/explore/room/:roomId"
+          element={authUser ? <PublicRoomPage /> : <Navigate to="/login" />}
         />
         <Route path="/help" element={<HelpPage />} />
       </Routes>

@@ -5,6 +5,7 @@ import friendRoutes from "./routes/friend.routes.js";
 import chatSessionRoutes from "./routes/chatSession.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import blockedUserRoutes from "./routes/blockedUser.routes.js";
+import publicRoomRoutes from "./routes/publicRoom.routes.js";
 import { connectDB } from "./lib/db.js";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -29,6 +30,7 @@ app.use("/api/friends", friendRoutes);
 app.use("/api/chat-sessions", chatSessionRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/blocked-users", blockedUserRoutes);
+app.use("/api/public-rooms", publicRoomRoutes);
 
 server.listen(5001, () => {
   console.log("server is running on port " + PORT);
