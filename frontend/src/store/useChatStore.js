@@ -6,75 +6,84 @@ import { useAuthStore } from "./useAuthStore";
 export const useChatStore = create((set, get) => ({
   selectedUser: null,
   users: [],
-  friends: [],
   messages: [],
   isUsersLoading: false,
-  viewMode: "chats", // "chats" or "friends"
+  friends: [],
   activeChats: [],
   chatSessions: [],
   selectedChatSession: null,
-  blockedUsers: [],
-  
-  // Public rooms state
   publicRooms: [],
+  joinedPublicRooms: [], // Added joined public rooms state
   selectedPublicRoom: null,
   publicRoomMessages: [],
-  
+  isPublicRoomMessagesLoading: false,
+  publicRoomParticipants: [],
+  viewMode: "chats", // "chats" or "friends"
+  blockedUsers: [],
+
   setViewMode: (viewMode) => set({ viewMode }),
-  
+
   getUsers: async () => {
-    set({ isUsersLoading: true });
     try {
-      const res = await axiosInstance.get("/users");
-      set({ users: res.data, isUsersLoading: false });
+      // This endpoint doesn't exist, we might need to create it
+      // For now, let's use an empty array to prevent errors
+      set({ users: [], isUsersLoading: false });
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching users:", error);
       set({ isUsersLoading: false });
     }
   },
-  
+
   getFriends: async () => {
-    set({ isUsersLoading: true });
     try {
-      const res = await axiosInstance.get("/friends");
-      set({ friends: res.data, isUsersLoading: false });
+      const res = await axiosInstance.get("/friends/list");
+      set({ friends: res.data });
     } catch (error) {
-      console.log(error);
-      set({ isUsersLoading: false });
+      console.error("Error fetching friends:", error);
     }
   },
-  
+
   getActiveChats: async () => {
     set({ isUsersLoading: true });
     try {
-      const res = await axiosInstance.get("/users/active-chats");
+      const res = await axiosInstance.get("/friends/active-chats");
       set({ activeChats: res.data, isUsersLoading: false });
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching active chats:", error);
       set({ isUsersLoading: false });
     }
   },
-  
+
   getMessages: async (chatSessionId) => {
     set({ isUsersLoading: true });
     try {
       if (!chatSessionId) {
         console.error("No chat session ID provided");
         set({ messages: [], isUsersLoading: false });
-        return;
+        return [];
       }
-      
+
+      // Check if we're trying to get messages for a public room instead
+      const selectedPublicRoom = get().selectedPublicRoom;
+      if (selectedPublicRoom && selectedPublicRoom._id) {
+        console.log("Public room is selected, not fetching private messages");
+        set({ isUsersLoading: false });
+        return [];
+      }
+
       console.log("Getting messages for chat session:", chatSessionId);
-      const res = await axiosInstance.get(`/messages/${chatSessionId}`);
+      // Use the correct endpoint for chat session messages
+      const res = await axiosInstance.get(`/chat-sessions/${chatSessionId}/messages`);
       set({ messages: res.data, isUsersLoading: false });
-      
+      console.log("Loaded messages:", res.data);
+
       // Subscribe to this chat session
       const socket = useAuthStore.getState().socket;
       if (socket) {
         // Join the chat session room
         socket.emit("joinChatSession", chatSessionId);
         console.log(`Joined chat session room: ${chatSessionId}`);
-        
+
         // Listen for new messages in this chat session
         socket.on("newMessage", (message) => {
           console.log("Received new message:", message);
@@ -82,7 +91,7 @@ export const useChatStore = create((set, get) => ({
           set((state) => ({
             messages: [...state.messages, message],
           }));
-          
+
           // Update the chat sessions list with the new message
           set((state) => ({
             chatSessions: state.chatSessions.map((session) => {
@@ -103,23 +112,34 @@ export const useChatStore = create((set, get) => ({
       set({ isUsersLoading: false });
     }
   },
-  
-  sendMessage: async (message, chatSessionId) => {
+
+  sendMessage: async (messageData) => {
     try {
-      // Send the message to the server
-      const res = await axiosInstance.post(`/messages/${chatSessionId}`, {
-        text: message,
+      // Get the selected chat session ID
+      const selectedChatSession = get().selectedChatSession;
+      if (!selectedChatSession || !selectedChatSession._id) {
+        console.error('No chat session selected');
+        return null;
+      }
+
+      const chatSessionId = selectedChatSession._id;
+      console.log(`Making POST request to /chat-sessions/${chatSessionId}/messages`, messageData);
+
+      // Send the message to the server using the correct endpoint for chat sessions
+      const res = await axiosInstance.post(`/chat-sessions/${chatSessionId}/messages`, {
+        text: messageData.text,
+        image: messageData.image,
       });
-      
+
       // Add the new message to the messages array
       set((state) => ({
         messages: [...state.messages, res.data],
       }));
-      
+
       // Update the chat sessions list with the new message
       set((state) => ({
         chatSessions: state.chatSessions.map((session) => {
-          if (session.chatSessionId === chatSessionId) {
+          if (session._id === chatSessionId) {
             return {
               ...session,
               lastMessage: res.data,
@@ -128,53 +148,56 @@ export const useChatStore = create((set, get) => ({
           return session;
         }),
       }));
-      
+
+      // Refresh the sidebar to show the updated message
+      get().getRecentMessages();
+
       return res.data;
     } catch (error) {
-      console.log(error);
+      console.error("Error sending message:", error);
       return null;
     }
   },
-  
+
   getRandomUser: async () => {
     try {
       const res = await axiosInstance.get("/chat-sessions/random/match");
       console.log("Random match response:", res.data);
-      
+
       if (res.data && res.data.user) {
         // Get the chat session details
         const chatSessionRes = await axiosInstance.get(`/chat-sessions/session/${res.data.chatSessionId}`);
         const chatSession = chatSessionRes.data;
-        
+
         // Set the selected user and chat session
-        set({ 
+        set({
           selectedUser: res.data.user,
           selectedChatSession: chatSession
         });
-        
+
         // Get messages for this chat session
         get().getMessages(res.data.chatSessionId);
-        
+
         // Update the chat sessions list with the new chat session
         get().getRecentMessages();
-        
+
         return res.data.user;
       }
       return null;
     } catch (error) {
       console.log("Error in getRandomUser:", error);
-      
+
       // Check if the error is because the user already has chat sessions with all available users
       if (error.response?.data?.error?.includes("You already have chat sessions with all available users")) {
         toast.error("No new users available for matching. Delete some existing chats to match with new users.");
       } else {
         toast.error(error.response?.data?.error || "Failed to get random user");
       }
-      
+
       return null;
     }
   },
-  
+
   addFriend: async (friendId) => {
     try {
       const res = await axiosInstance.post("/friends", { friendId });
@@ -184,17 +207,17 @@ export const useChatStore = create((set, get) => ({
       return null;
     }
   },
-  
+
   getRecentMessages: async () => {
     try {
       const res = await axiosInstance.get("/chat-sessions");
       console.log("Got chat sessions:", res.data);
-      
+
       // Process each chat session to extract the other user
       const processedSessions = res.data.map(session => {
         return get().processChatSession(session);
       });
-      
+
       set({ chatSessions: processedSessions });
       return processedSessions;
     } catch (error) {
@@ -202,12 +225,12 @@ export const useChatStore = create((set, get) => ({
       return [];
     }
   },
-  
+
   processChatSession: (chatSession) => {
     if (!chatSession) return null;
-    
+
     const authUser = useAuthStore.getState().authUser;
-    
+
     // Find the other user in the participants array
     let otherUser = null;
     if (chatSession.participants && chatSession.participants.length > 0) {
@@ -215,13 +238,13 @@ export const useChatStore = create((set, get) => ({
         (user) => user._id !== authUser._id
       );
     }
-    
+
     // If we couldn't find the other user, this is probably a self-chat or invalid
     if (!otherUser) {
       console.warn("Could not find other user in chat session:", chatSession);
       return null;
     }
-    
+
     // Return a processed chat session with the other user and last message
     return {
       chatSessionId: chatSession._id,
@@ -230,14 +253,14 @@ export const useChatStore = create((set, get) => ({
       unreadCount: chatSession.unreadCount || 0
     };
   },
-  
+
   cleanupChat: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
-    
+
     // Remove event listener
     socket.off("newMessage");
-    
+
     // Leave the chat session room if we have one
     if (get().selectedChatSession && get().selectedChatSession._id) {
       socket.emit("leaveChatSession", get().selectedChatSession._id);
@@ -245,16 +268,29 @@ export const useChatStore = create((set, get) => ({
     }
   },
   
+  cleanupPublicRoomChat: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+
+    // Remove event listener
+    socket.off("newRoomMessage");
+
+    // Leave the public room if we have one
+    if (get().selectedPublicRoom && get().selectedPublicRoom._id) {
+      socket.emit("leavePublicRoom", get().selectedPublicRoom._id);
+    }
+  },
+
   setSelectedUser: async (selectedUser) => set({ selectedUser }),
   setSelectedChatSession: (selectedChatSession) => set({ selectedChatSession }),
-  
+
   deleteChatSession: async (chatSessionId) => {
     try {
       set({ isLoading: true });
-      
+
       // Call the API to delete the chat session
       await axiosInstance.delete(`/chat-sessions/session/${chatSessionId}`);
-      
+
       // Update the local state
       set(state => ({
         chatSessions: state.chatSessions.filter(session => session.chatSessionId !== chatSessionId),
@@ -263,7 +299,7 @@ export const useChatStore = create((set, get) => ({
         selectedUser: state.selectedChatSession?._id === chatSessionId ? null : state.selectedUser,
         messages: state.selectedChatSession?._id === chatSessionId ? [] : state.messages
       }));
-      
+
       toast.success("Chat session deleted successfully");
       return true;
     } catch (error) {
@@ -274,20 +310,20 @@ export const useChatStore = create((set, get) => ({
       set({ isLoading: false });
     }
   },
-  
+
   blockUser: async (userId, reason = "") => {
     try {
       set({ isLoading: true });
-      
+
       // Call the API to block the user
       await axiosInstance.post(`/blocked-users/block/${userId}`, { reason });
-      
+
       // Get the chat session with this user if it exists
       const { selectedChatSession, selectedUser } = get();
-      
+
       // Update the local state - remove any chat sessions with this user
       set(state => ({
-        chatSessions: state.chatSessions.filter(session => 
+        chatSessions: state.chatSessions.filter(session =>
           session.otherUser?._id !== userId
         ),
         // If the blocked user was selected, clear the selection
@@ -295,7 +331,7 @@ export const useChatStore = create((set, get) => ({
         selectedUser: selectedUser?._id === userId ? null : state.selectedUser,
         messages: selectedUser?._id === userId ? [] : state.messages
       }));
-      
+
       toast.success("User blocked successfully");
       return true;
     } catch (error) {
@@ -306,14 +342,14 @@ export const useChatStore = create((set, get) => ({
       set({ isLoading: false });
     }
   },
-  
+
   reportUser: async (userId, reason) => {
     try {
       set({ isLoading: true });
-      
+
       // Call the API to report the user
       await axiosInstance.post(`/blocked-users/report/${userId}`, { reason });
-      
+
       toast.success("User reported successfully");
       return true;
     } catch (error) {
@@ -324,79 +360,56 @@ export const useChatStore = create((set, get) => ({
       set({ isLoading: false });
     }
   },
-  
+
   getBlockedUsers: async () => {
     try {
       set({ isLoading: true });
-      
+
       // Call the API to get blocked users
       const response = await axiosInstance.get('/blocked-users');
-      
+
       // Update the state with blocked users
       set({ blockedUsers: response.data });
-      
+
       return response.data;
     } catch (error) {
       console.error("Error getting blocked users:", error);
-      toast.error("Failed to get blocked users");
+      toast.error(error.response?.data?.error || "Failed to get blocked users");
       return [];
     } finally {
       set({ isLoading: false });
     }
   },
-  
-  unblockUser: async (userId) => {
-    try {
-      set({ isLoading: true });
-      
-      // Call the API to unblock the user
-      await axiosInstance.delete(`/blocked-users/unblock/${userId}`);
-      
-      // Update the blocked users list
-      set(state => ({
-        blockedUsers: state.blockedUsers.filter(block => block.blocked._id !== userId)
-      }));
-      
-      toast.success("User unblocked successfully");
-      return true;
-    } catch (error) {
-      console.error("Error unblocking user:", error);
-      toast.error("Failed to unblock user");
-      return false;
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-  
+
   // Socket message subscription management
   subscribeToMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
-    
+
     // Subscribe to new messages
     socket.on("newMessage", (message) => {
       // Add the new message to the messages array
       set(state => ({
         messages: [...state.messages, message]
       }));
-      
+
       // Update the chat sessions list with the new message
       get().getRecentMessages();
     });
-    
+
     console.log("Subscribed to messages");
   },
-  
+
   unsubscribeToMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
-    
+
     // Unsubscribe from new messages
     socket.off("newMessage");
-    
+
     console.log("Unsubscribed from messages");
   },
-  
+
   // Get all public rooms
   getPublicRooms: async () => {
     try {
@@ -405,6 +418,45 @@ export const useChatStore = create((set, get) => ({
       return res.data;
     } catch (error) {
       console.error("Error getting public rooms:", error);
+      return [];
+    }
+  },
+
+  // Get only the public rooms that the user has joined
+  getJoinedPublicRooms: async () => {
+    try {
+      // We need to get all public rooms and filter by the ones where the user is a participant
+      const res = await axiosInstance.get("/public-rooms");
+      const allRooms = res.data;
+
+      // Get the current user ID
+      const authUser = useAuthStore.getState().authUser;
+      if (!authUser || !authUser._id) {
+        console.error("No authenticated user found");
+        return [];
+      }
+
+      // Filter rooms where the current user is a participant
+      // This depends on how the API returns participant data
+      const joinedRooms = allRooms.filter(room => {
+        // Check if the room has participants array and if the user's ID is in it
+        return room.participants &&
+               Array.isArray(room.participants) &&
+               room.participants.some(participant => {
+                 // Handle both object and string IDs
+                 if (typeof participant === 'string') {
+                   return participant === authUser._id;
+                 } else if (participant._id) {
+                   return participant._id === authUser._id;
+                 }
+                 return false;
+               });
+      });
+
+      set({ joinedPublicRooms: joinedRooms });
+      return joinedRooms;
+    } catch (error) {
+      console.error("Error getting joined public rooms:", error);
       return [];
     }
   },
@@ -424,84 +476,240 @@ export const useChatStore = create((set, get) => ({
   // Join a public room
   joinPublicRoom: async (roomId) => {
     try {
-      const res = await axiosInstance.post(`/public-rooms/join/${roomId}`);
+      console.log("Joining public room with ID:", roomId);
       
-      // Get messages for this room
-      get().getPublicRoomMessages(roomId);
-      
-      // Join the socket room
-      const socket = useAuthStore.getState().socket;
-      if (socket) {
-        socket.emit("joinPublicRoom", roomId);
+      // Check if we have a token in localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error("No authentication token found");
+        toast.error("Please log in again");
+        return false;
       }
       
-      return res.data;
-    } catch (error) {
-      console.error("Error joining room:", error);
-      toast.error(error.response?.data?.error || "Failed to join room");
-      return null;
-    }
-  },
+      // Clear any existing private chat selections to avoid conflicts
+      set({
+        selectedUser: null,
+        selectedChatSession: null
+      });
 
-  // Leave a public room
-  leavePublicRoom: async (roomId) => {
-    try {
-      const res = await axiosInstance.post(`/public-rooms/leave/${roomId}`);
-      
-      // Leave the socket room
-      const socket = useAuthStore.getState().socket;
-      if (socket) {
-        socket.emit("leavePublicRoom", roomId);
+      // Join the room
+      const res = await axiosInstance.post(`/public-rooms/join/${roomId}`);
+      console.log("Joined public room:", res.data);
+
+      // Fetch the room details to set as selectedPublicRoom
+      try {
+        // Use the endpoint for room details
+        const roomDetails = await axiosInstance.get(`/public-rooms/room/${roomId}`);
+        console.log("Room details fetched:", roomDetails.data);
+
+        // Set the selected public room in the state
+        set({
+          selectedPublicRoom: roomDetails.data
+        });
+
+        // Get messages for this room
+        await useChatStore.getState().getPublicRoomMessages(roomId);
+
+        // Join the socket room
+        const socket = useAuthStore.getState().socket;
+        if (socket) {
+          socket.emit("joinPublicRoom", roomId);
+          console.log("Emitted joinPublicRoom event to socket for room:", roomId);
+        } else {
+          console.warn("Socket not available, can't join room socket");
+        }
+
+        return true;
+      } catch (roomError) {
+        console.error("Error fetching room details:", roomError);
+        toast.error("Failed to get room details");
+        return false;
       }
-      
-      return res.data;
     } catch (error) {
-      console.error("Error leaving room:", error);
-      toast.error(error.response?.data?.error || "Failed to leave room");
-      return null;
+      console.error("Error joining public room:", error);
+      toast.error(error.response?.data?.error || "Failed to join room");
+      return false;
     }
   },
 
   // Get messages for a public room
   getPublicRoomMessages: async (roomId) => {
     try {
-      const res = await axiosInstance.get(`/public-rooms/${roomId}`);
-      set({ publicRoomMessages: res.data });
-      
-      // Subscribe to this room's messages
+      if (!roomId) {
+        console.error("No room ID provided");
+        set({ publicRoomMessages: [] });
+        return [];
+      }
+
+      set({ isPublicRoomMessagesLoading: true });
+
+      // First unsubscribe from any previous room messages to avoid duplicates
+      get().cleanupPublicRoomChat();
+
+      // Use the updated endpoint for room messages
+      console.log(`Fetching messages for public room ${roomId}`);
+      const res = await axiosInstance.get(`/public-rooms/${roomId}/messages`);
+      console.log("Fetched public room messages:", res.data.length, "messages");
+
+      // Ensure we have an array of messages
+      const messages = Array.isArray(res.data) ? res.data : [];
+
+      set({ publicRoomMessages: messages });
+
+      // Subscribe to new messages for this room
       const socket = useAuthStore.getState().socket;
       if (socket) {
-        socket.on("newRoomMessage", (data) => {
-          if (data.roomId === roomId) {
-            set((state) => ({
-              publicRoomMessages: [...state.publicRoomMessages, data.message]
-            }));
+        // First check if socket is connected
+        if (!socket.connected) {
+          console.log("Socket not connected, attempting to reconnect");
+          socket.connect();
+        }
+
+        // Make sure we're in the room
+        socket.emit("joinPublicRoom", roomId);
+        console.log("Joined socket room for public room:", roomId);
+        
+        // Remove any existing listeners to prevent duplicates
+        socket.off("newRoomMessage");
+        
+        // Set up listener for new messages
+        socket.on("newRoomMessage", (message) => {
+          // Only add the message if it's for the current room
+          if (message.roomId === roomId) {
+            // Make sure we're still in the same room when the message arrives
+            const currentRoom = get().selectedPublicRoom;
+            if (!currentRoom || currentRoom._id !== roomId) {
+              console.log('Room changed, ignoring message');
+              return;
+            }
+            
+            set((state) => {
+              // Make sure we don't add duplicate messages
+              const isDuplicate = state.publicRoomMessages.some(msg => msg._id === message._id);
+              if (isDuplicate) return state;
+              
+              return {
+                publicRoomMessages: [...state.publicRoomMessages, message]
+              };
+            });
           }
         });
       }
-      
-      return res.data;
+
+      return messages;
     } catch (error) {
-      console.error("Error getting room messages:", error);
+      console.error("Error getting public room messages:", error);
+      toast.error("Failed to load room messages");
+      set({ publicRoomMessages: [] });
       return [];
+    } finally {
+      set({ isPublicRoomMessagesLoading: false });
     }
   },
 
   // Send message to a public room
-  sendPublicRoomMessage: async (roomId, message) => {
+  sendPublicRoomMessage: async ({ roomId, text }) => {
     try {
-      const res = await axiosInstance.post(`/public-rooms/send/${roomId}`, {
-        text: message
-      });
+      if (!roomId || !text) {
+        console.error("Missing roomId or text for public room message");
+        return null;
+      }
+
+      // Get current user info for the temporary message
+      const currentUser = useAuthStore.getState().user || useAuthStore.getState().authUser;
+      if (!currentUser) {
+        console.error("No user found, cannot send message");
+        return null;
+      }
+
+      // Create a temporary message with current timestamp
+      const tempId = `temp-${Date.now()}`;
+      const tempMessage = {
+        _id: tempId,
+        text,
+        sender: currentUser,
+        roomId,
+        createdAt: new Date().toISOString(),
+        isTemp: true, // Flag to identify temporary messages
+      };
       
+      // Add temporary message to state for immediate feedback
+      set((state) => ({
+        publicRoomMessages: [...state.publicRoomMessages, tempMessage],
+      }));
+
+      // Send the message to the server
+      const res = await axiosInstance.post(`/public-rooms/send/${roomId}`, {
+        text,
+      });
+
+      // Replace the temporary message with the confirmed message from server
+      set((state) => ({
+        publicRoomMessages: state.publicRoomMessages
+          .filter((msg) => msg._id !== tempId)
+          .concat(res.data)
+      }));
+
       return res.data;
     } catch (error) {
-      console.error("Error sending message to room:", error);
-      toast.error(error.response?.data?.error || "Failed to send message");
+      console.error("Error sending public room message:", error);
+      toast.error("Failed to send message");
+
+      // Remove the temporary message on error
+      set((state) => ({
+        publicRoomMessages: state.publicRoomMessages.filter(
+          (msg) => !msg.isTemp
+        ),
+      }));
+
       return null;
     }
   },
 
   // Set selected public room
-  setSelectedPublicRoom: (room) => set({ selectedPublicRoom: room })
+  setSelectedPublicRoom: (room) => set({ selectedPublicRoom: room }),
+
+  // Get participants for a public room
+  getPublicRoomParticipants: async (roomId) => {
+    try {
+      const res = await axiosInstance.get(`/public-rooms/${roomId}/participants`);
+      return res.data;
+    } catch (error) {
+      console.error("Error fetching room participants:", error);
+      toast.error("Failed to load room participants");
+      return [];
+    }
+  },
+
+  // Leave a public room
+  leavePublicRoom: async (roomId) => {
+    try {
+      console.log("Leaving public room with ID:", roomId);
+
+      // Leave the room via API
+      const res = await axiosInstance.post(`/public-rooms/leave/${roomId}`);
+      console.log("Left public room:", res.data);
+
+      // If the room we're leaving is the currently selected room, clear it
+      if (get().selectedPublicRoom && get().selectedPublicRoom._id === roomId) {
+        // Clean up socket listeners first
+        get().cleanupPublicRoomChat();
+
+        set({
+          selectedPublicRoom: null,
+          publicRoomMessages: []
+        });
+      }
+
+      // Refresh the list of joined rooms
+      await get().getJoinedPublicRooms();
+
+      toast.success("Left the room successfully");
+      return true;
+    } catch (error) {
+      console.error("Error leaving public room:", error);
+      toast.error(error.response?.data?.error || "Failed to leave room");
+      return false;
+    }
+  }
 }));
