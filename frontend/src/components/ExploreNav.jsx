@@ -5,7 +5,7 @@ const ExploreNav = () => {
   const [searchText, setSearchText] = useState("");
   const [activeTab, setActiveTab] = useState("Gaming");
   
-  const categories = ["Gaming", "Music", "Movie", "TV Show"];
+  const categories = ["Gaming", "Music", "Movie", "Random"];
   
   return (
     <div className="flex flex-col bg-primary-100">
@@ -77,7 +77,7 @@ const ExploreNav = () => {
       
       {/* Content area for the selected tab */}
       <div className="container mx-auto mt-6 px-4">
-        <ExploreContent category={activeTab} />
+        <ExploreContent category={activeTab} searchQuery={searchText} />
       </div>
     </div>
   );

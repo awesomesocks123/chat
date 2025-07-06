@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { usePublicRoomStore } from "../store/usePublicRoomStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
-import { Users, MessagesSquare, Shuffle, Trash2 } from "lucide-react";
+import { Users, MessagesSquare, Shuffle, Trash2, MessageSquare, LogOut } from "lucide-react";
 
 // Simple function to format time ago
 const formatTimeAgo = (date) => {
@@ -56,6 +57,19 @@ const SideBar = ({ toggleSidebar }) => {
     selectedChatSession,
     deleteChatSession,
   } = useChatStore();
+  
+  // Add state for sidebar tabs
+  const [activeTab, setActiveTab] = useState("private"); // "private", "rooms", or "friends"
+  
+  const {
+    getPublicRooms,
+    publicRooms,
+    joinedPublicRooms,
+    getJoinedPublicRooms,
+    setSelectedPublicRoom,
+    selectedPublicRoom,
+    joinPublicRoom,
+  } = usePublicRoomStore();
 
   const { authUser } = useAuthStore();
   const [isRandomLoading, setIsRandomLoading] = useState(false);
@@ -69,7 +83,11 @@ const SideBar = ({ toggleSidebar }) => {
     getActiveChats();
     // Use the new getRecentMessages function instead of getChatSessions
     useChatStore.getState().getRecentMessages();
-  }, [getUsers, getFriends, getActiveChats]);
+    // Get public rooms and joined public rooms
+    getPublicRooms();
+    // Get only the rooms the user has joined
+    getJoinedPublicRooms();
+  }, [getUsers, getFriends, getActiveChats, getPublicRooms, getJoinedPublicRooms]);
 
   // Listen for online users and new chat sessions from socket
   useEffect(() => {
@@ -138,7 +156,11 @@ const SideBar = ({ toggleSidebar }) => {
   };
 
   const handleUserSelect = async (item) => {
+    // First, clear any existing selections to avoid conflicts
     if (viewMode === "chats") {
+      // Clear public room selection first
+      setSelectedPublicRoom(null);
+      
       // Set the selected user to the other user in the recent message
       setSelectedUser(item.otherUser);
       
@@ -173,8 +195,27 @@ const SideBar = ({ toggleSidebar }) => {
         console.error("Error loading chat session:", error);
         toast.error("Failed to load chat session");
       }
+    } else if (viewMode === "chatrooms") {
+      // For chatrooms view, item is a public room object
+      try {
+        // Clear private chat selections first
+        setSelectedUser(null);
+        useChatStore.getState().setSelectedChatSession(null);
+        
+        // Join the room
+        await joinPublicRoom(item._id);
+        
+        // Set selected public room
+        setSelectedPublicRoom(item);
+      } catch (error) {
+        console.error("Error joining public room:", error);
+        toast.error("Failed to join public room");
+      }
     } else {
       // For friends view, item is a user/friend object
+      // Clear public room selection first
+      setSelectedPublicRoom(null);
+      
       setSelectedUser(item);
       // Create or get a chat session with this user
       try {
@@ -213,13 +254,20 @@ const SideBar = ({ toggleSidebar }) => {
       </div>
       
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setViewMode("chats")}
             className={`btn btn-sm ${viewMode === "chats" ? "btn-primary" : "btn-ghost"}`}
           >
             <MessagesSquare className="w-4 h-4" />
-            Chats
+            Private
+          </button>
+          <button
+            onClick={() => setViewMode("chatrooms")}
+            className={`btn btn-sm ${viewMode === "chatrooms" ? "btn-primary" : "btn-ghost"}`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            Rooms
           </button>
           <button
             onClick={() => setViewMode("friends")}
@@ -335,6 +383,86 @@ const SideBar = ({ toggleSidebar }) => {
               No active chats
             </p>
           )
+        ) : viewMode === "chatrooms" ? (
+          // Display only joined public chatrooms
+          <div className="space-y-2">
+            {joinedPublicRooms.filter((room) => {
+                if (!searchTerm) return true;
+                return (
+                  room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  room.description
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase())
+                );
+              })
+              .map((room) => {
+                const isActive = selectedPublicRoom && selectedPublicRoom._id === room._id;
+                const lastMessage = room.lastMessage;
+                
+                return (
+                  <div
+                    key={room._id}
+                    className={`flex items-center p-2 rounded-lg ${isActive ? "bg-primary text-primary-content" : "hover:bg-base-200"}`}
+                  >
+                    <div 
+                      className="flex-1 flex items-center gap-2 cursor-pointer"
+                      onClick={() => {
+                        handleUserSelect(room);
+                        if (window.innerWidth < 768) {
+                          toggleSidebar();
+                        }
+                      }}
+                    >
+                      <div className="avatar placeholder">
+                        <div className="bg-neutral text-neutral-content rounded-full w-10">
+                          <span>{room.name.charAt(0).toUpperCase()}</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between">
+                          <h3 className={`font-medium truncate ${isActive ? "text-primary-content" : ""}`}>
+                            {room.name}
+                          </h3>
+                          {lastMessage && (
+                            <span className="text-xs opacity-70">
+                              {formatTimeAgo(new Date(lastMessage.createdAt))}
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-sm truncate ${isActive ? "text-primary-content opacity-80" : "opacity-70"}`}>
+                          {lastMessage ? `${lastMessage.sender.fullName}: ${lastMessage.text}` : room.description}
+                        </p>
+                        <div className="flex items-center mt-1">
+                          <span className="text-xs bg-base-300 rounded-full px-2 py-0.5">
+                            {room.category}
+                          </span>
+                          <span className="text-xs ml-2">
+                            {room.participants.length} participants
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      className="btn btn-ghost btn-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        usePublicRoomStore.getState().leavePublicRoom(room._id);
+                      }}
+                      title="Leave room"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+
+            {joinedPublicRooms.length === 0 && (
+              <div className="p-4 text-center text-base-content/70">
+                You haven't joined any chatrooms yet. <br/>
+                <a href="/explore" className="text-primary hover:underline">Explore chatrooms</a> to join one.
+              </div>
+            )}
+          </div>
         ) : (
           // Display friends
           Array.isArray(friends) && friends.length > 0 ? (

@@ -3,7 +3,9 @@ import ExploreNav from "../components/ExploreNav";
 
 const ExplorePage = () => {
   return (
-    <ExploreNav />
+    <div className="bg-primary-100 h-screen">
+      <ExploreNav />
+    </div>
   );
 };
 

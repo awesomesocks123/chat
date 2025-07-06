@@ -3,7 +3,7 @@ import { User } from "lucide-react";
 import { useChatStore } from "../store/useChatStore";
 import { useNavigate } from "react-router-dom";
 
-const ExploreContent = ({ category }) => {
+const ExploreContent = ({ category, searchQuery }) => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,11 +48,61 @@ const ExploreContent = ({ category }) => {
     );
   }
 
+  // Filter rooms based on search query
+  const filteredRooms = rooms.filter(room => {
+    if (!searchQuery) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      room.name.toLowerCase().includes(query) ||
+      (room.description && room.description.toLowerCase().includes(query))
+    );
+  });
+
+  // Handle joining a room
+  const handleJoinRoom = async (room) => {
+    try {
+      setLoading(true);
+      console.log("Joining room from explore page:", room);
+      
+      // Join the room and get the result
+      const result = await joinPublicRoom(room._id);
+      
+      if (result) {
+        // Make sure the room is selected in the global state
+        setSelectedPublicRoom(room);
+        
+        // Small delay to ensure state is updated before navigation
+        setTimeout(() => {
+          // Navigate to the main chat page
+          navigate('/');
+        }, 100);
+      } else {
+        setError("Failed to join room. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error joining room:", error);
+      setError("Failed to join room. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="p-4 container mx-auto max-w-6xl">
       <h2 className="text-2xl font-bold mb-6">{category} Rooms</h2>
+      
+      {filteredRooms.length === 0 && (
+        <div className="alert alert-info shadow-lg mb-4">
+          <div>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current flex-shrink-0 w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>{searchQuery ? `No rooms matching "${searchQuery}"` : "No rooms available in this category"}</span>
+          </div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {rooms.map((room) => (
+        {filteredRooms.map((room) => (
           <div key={room._id} className="card bg-accent-100 w-86 hover:bg-base-300 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden ">
             <figure className="relative">
               <img
@@ -86,21 +136,6 @@ const ExploreContent = ({ category }) => {
   );
 };
 
-  // Handle joining a room
-  const handleJoinRoom = async (room) => {
-    try {
-      setLoading(true);
-      await joinPublicRoom(room._id);
-      setSelectedPublicRoom(room);
-      
-      // Navigate to the chat page for this room
-      navigate(`/explore/room/${room._id}`);
-    } catch (error) {
-      console.error("Error joining room:", error);
-      setError("Failed to join room. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
 export default ExploreContent;
