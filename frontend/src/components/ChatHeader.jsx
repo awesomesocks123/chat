@@ -15,16 +15,24 @@ const ChatHeader = ({ toggleSidebar, isPublicRoom, roomName, toggleParticipants 
     deleteChatSession,
     selectedPublicRoom,
     setSelectedPublicRoom,
-    leavePublicRoom
+    leavePublicRoom,
+    sentFriendRequests,
+    getSentFriendRequests
   } = useChatStore();
   const { onlineUsers, authUser } = useAuthStore();
   const [isFriend, setIsFriend] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [reportReason, setReportReason] = useState("");
+  
+  // Load sent friend requests when component mounts
+  useEffect(() => {
+    getSentFriendRequests();
+  }, [getSentFriendRequests]);
   
   useEffect(() => {
     // Check if selected user is already a friend
@@ -34,7 +42,15 @@ const ChatHeader = ({ toggleSidebar, isPublicRoom, roomName, toggleParticipants 
     } else {
       setIsFriend(false);
     }
-  }, [selectedUser, friends]);
+    
+    // Check if a friend request has been sent to this user
+    if (selectedUser && Array.isArray(sentFriendRequests)) {
+      const sentRequestIds = sentFriendRequests.map(request => request._id);
+      setRequestSent(sentRequestIds.includes(selectedUser._id));
+    } else {
+      setRequestSent(false);
+    }
+  }, [selectedUser, friends, sentFriendRequests]);
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -161,7 +177,9 @@ const ChatHeader = ({ toggleSidebar, isPublicRoom, roomName, toggleParticipants 
             </div>
           ) : selectedUser && (
             <div>
-              <h3 className="font-medium">{selectedUser.fullName}</h3>
+              <h3 className="font-medium">
+                {isFriend ? selectedUser.fullName : selectedUser.username}
+              </h3>
               <div className="flex items-center gap-1.5">
                 <div className={`${(onlineUsers ?? []).includes(selectedUser?._id) 
                   ? "status status-md status-success animate-pulse" 
