@@ -1,5 +1,16 @@
 import express from "express";
-import { addFriend, removeFriend, getRandomUser, getFriends, getActiveChats } from "../controllers/friend.controller.js";
+import { 
+  sendFriendRequest, 
+  acceptFriendRequest, 
+  declineFriendRequest, 
+  cancelFriendRequest,
+  removeFriend, 
+  getRandomUser, 
+  getFriends, 
+  getActiveChats,
+  getReceivedFriendRequests,
+  getSentFriendRequests
+} from "../controllers/friend.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -8,9 +19,14 @@ const router = express.Router();
 router.use(protectRoute);
 
 // Friend management routes
-router.post("/add", addFriend);
+router.post("/request/send", sendFriendRequest);
+router.post("/request/accept", acceptFriendRequest);
+router.post("/request/decline", declineFriendRequest);
+router.post("/request/cancel", cancelFriendRequest);
 router.delete("/remove/:userId", removeFriend);
 router.get("/list", getFriends);
+router.get("/requests/received", getReceivedFriendRequests);
+router.get("/requests/sent", getSentFriendRequests);
 
 // Random chat and active chats
 router.get("/random", getRandomUser);
