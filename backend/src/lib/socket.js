@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import http from "http";
 import express from "express";
+import { initSocketIO } from "../socket/socket.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -10,6 +11,9 @@ const io = new Server(server, {
     origin: ["http://localhost:5173"]
   }
 });
+
+// Initialize our socket module with the io instance
+initSocketIO(io);
 
 export function getReceiverSocketId(userId) {
   return userSocketMap[userId];

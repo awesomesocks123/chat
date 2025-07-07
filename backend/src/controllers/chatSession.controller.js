@@ -27,7 +27,7 @@ export const getOrCreateChatSession = async (req, res) => {
     // We need to check both possible orders of participants
     let chatSession = await ChatSession.findOne({
       participants: { $all: [currentUserId, userId] }
-    }).populate("participants", "fullName profilePic");
+    }).populate("participants", "fullName username profilePic");
 
     // If no chat session exists, create one
     if (!chatSession) {
@@ -37,7 +37,7 @@ export const getOrCreateChatSession = async (req, res) => {
       });
 
       // Populate the participants after creation
-      chatSession = await ChatSession.findById(chatSession._id).populate("participants", "fullName profilePic");
+      chatSession = await ChatSession.findById(chatSession._id).populate("participants", "fullName username profilePic");
 
       // Add to both users' active chats
       await User.findByIdAndUpdate(
@@ -67,8 +67,8 @@ export const getUserChatSessions = async (req, res) => {
     const chatSessions = await ChatSession.find({
       participants: currentUserId
     })
-      .populate("participants", "fullName profilePic")
-      .populate("lastMessage.sender", "fullName")
+      .populate("participants", "fullName username profilePic")
+      .populate("lastMessage.sender", "fullName username")
       .sort({ updatedAt: -1 }); // Sort by most recent activity
 
     res.status(200).json(chatSessions);
@@ -158,10 +158,20 @@ export const sendMessage = async (req, res) => {
       )
     ]);
 
-    // Get socket of the receiver and emit event
+    // Emit the message to the chat session room so all connected clients receive it
+    const chatSessionRoomId = `chat_session_${chatSession._id}`;
+    console.log(`Emitting newMessage event to room: ${chatSessionRoomId}`);
+    
+    io.to(chatSessionRoomId).emit("newMessage", {
+      chatSessionId: chatSession._id,
+      message: messageWithExplicitSender
+    });
+    
+    // Also emit directly to the receiver's socket as a fallback
     if (otherUserId) {
       const receiverSocketId = getReceiverSocketId(otherUserId.toString());
       if (receiverSocketId) {
+        console.log(`Also emitting directly to receiver socket: ${receiverSocketId}`);
         io.to(receiverSocketId).emit("newMessage", {
           chatSessionId: chatSession._id,
           message: messageWithExplicitSender
