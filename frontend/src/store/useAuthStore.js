@@ -94,6 +94,42 @@ export const useAuthStore = create((set,get) => ({
 
     socket.on("getOnlineUsers", (usersIds) => {
       set({ onlineUsers: usersIds });
+    });
+    
+    // Listen for friend request events
+    socket.on("friendRequest", (data) => {
+      toast.success(`New friend request from ${data.user.fullName || data.user.username}`);
+      // Update friend requests in the chat store
+      import("./useChatStore").then(module => {
+        const useChatStore = module.useChatStore;
+        useChatStore.getState().getReceivedFriendRequests();
+      });
+    });
+    
+    socket.on("friendRequestAccepted", (data) => {
+      toast.success(`${data.user.fullName || data.user.username} accepted your friend request!`);
+      // Update friends list and requests in the chat store
+      import("./useChatStore").then(module => {
+        const useChatStore = module.useChatStore;
+        useChatStore.getState().getFriends();
+        useChatStore.getState().getSentFriendRequests();
+      });
+    });
+    
+    socket.on("friendRequestDeclined", () => {
+      // Update sent requests in the chat store
+      import("./useChatStore").then(module => {
+        const useChatStore = module.useChatStore;
+        useChatStore.getState().getSentFriendRequests();
+      });
+    });
+    
+    socket.on("friendRequestCancelled", () => {
+      // Update received requests in the chat store
+      import("./useChatStore").then(module => {
+        const useChatStore = module.useChatStore;
+        useChatStore.getState().getReceivedFriendRequests();
+      });
     })
   },
   disconnectSocket: () => {

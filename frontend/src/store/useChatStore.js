@@ -3,6 +3,9 @@ import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { useAuthStore } from "./useAuthStore";
 
+// Track sent message IDs to prevent duplicates when they come back via socket
+const sentMessageIds = new Set();
+
 export const useChatStore = create((set, get) => ({
   selectedUser: null,
   users: [],
@@ -20,6 +23,8 @@ export const useChatStore = create((set, get) => ({
   publicRoomParticipants: [],
   viewMode: "chats", // "chats" or "friends"
   blockedUsers: [],
+  receivedFriendRequests: [],
+  sentFriendRequests: [],
 
   setViewMode: (viewMode) => set({ viewMode }),
 
@@ -40,6 +45,24 @@ export const useChatStore = create((set, get) => ({
       set({ friends: res.data });
     } catch (error) {
       console.error("Error fetching friends:", error);
+    }
+  },
+  
+  getReceivedFriendRequests: async () => {
+    try {
+      const res = await axiosInstance.get("/friends/requests/received");
+      set({ receivedFriendRequests: res.data });
+    } catch (error) {
+      console.error("Error fetching received friend requests:", error);
+    }
+  },
+  
+  getSentFriendRequests: async () => {
+    try {
+      const res = await axiosInstance.get("/friends/requests/sent");
+      set({ sentFriendRequests: res.data });
+    } catch (error) {
+      console.error("Error fetching sent friend requests:", error);
     }
   },
 
@@ -83,29 +106,9 @@ export const useChatStore = create((set, get) => ({
         // Join the chat session room
         socket.emit("joinChatSession", chatSessionId);
         console.log(`Joined chat session room: ${chatSessionId}`);
-
-        // Listen for new messages in this chat session
-        socket.on("newMessage", (message) => {
-          console.log("Received new message:", message);
-          // Add the new message to the messages array
-          set((state) => ({
-            messages: [...state.messages, message],
-          }));
-
-          // Update the chat sessions list with the new message
-          set((state) => ({
-            chatSessions: state.chatSessions.map((session) => {
-              if (session.chatSessionId === chatSessionId) {
-                return {
-                  ...session,
-                  lastMessage: message,
-                  unreadCount: session.unreadCount + 1
-                };
-              }
-              return session;
-            }),
-          }));
-        });
+        
+        // We don't set up socket listeners here anymore
+        // This is now handled in the subscribeToMessages function
       }
     } catch (error) {
       console.log(error);
@@ -121,32 +124,59 @@ export const useChatStore = create((set, get) => ({
         console.error('No chat session selected');
         return null;
       }
-
+      
       const chatSessionId = selectedChatSession._id;
-      console.log(`Making POST request to /chat-sessions/${chatSessionId}/messages`, messageData);
 
-      // Send the message to the server using the correct endpoint for chat sessions
-      const res = await axiosInstance.post(`/chat-sessions/${chatSessionId}/messages`, {
+      // Get current user info for the temporary message
+      const currentUser = useAuthStore.getState().user || useAuthStore.getState().authUser;
+      if (!currentUser) {
+        console.error("No user found, cannot send message");
+        return null;
+      }
+
+      // Create a temporary message with current timestamp and temporary ID
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const tempMessage = {
+        _id: tempId,
         text: messageData.text,
         image: messageData.image,
+        sender: currentUser,
+        chatSessionId,
+        createdAt: new Date().toISOString(),
+        isTemp: true, // Flag to identify temporary messages
+        isSentByMe: true
+      };
+      
+      // Add temporary message to state for immediate feedback
+      set((state) => ({
+        messages: [...state.messages, tempMessage]
+      }));
+
+      // Send the message to the API
+      const res = await axiosInstance.post(`/chat-sessions/${chatSessionId}/messages`, {
+        text: messageData.text,
+        image: messageData.image
       });
 
-      // Add the new message to the messages array
+      // Replace the temporary message with the confirmed message from server
       set((state) => ({
-        messages: [...state.messages, res.data],
+        messages: state.messages
+          .filter((msg) => msg._id !== tempId)
+          .concat(res.data)
       }));
 
       // Update the chat sessions list with the new message
       set((state) => ({
         chatSessions: state.chatSessions.map((session) => {
-          if (session._id === chatSessionId) {
+          const sessionId = session.chatSessionId || session._id;
+          if (sessionId && sessionId.toString() === chatSessionId.toString()) {
             return {
               ...session,
-              lastMessage: res.data,
+              lastMessage: res.data
             };
           }
           return session;
-        }),
+        })
       }));
 
       // Refresh the sidebar to show the updated message
@@ -155,6 +185,14 @@ export const useChatStore = create((set, get) => ({
       return res.data;
     } catch (error) {
       console.error("Error sending message:", error);
+      
+      // Remove the temporary message on error
+      set((state) => ({
+        messages: state.messages.filter(
+          (msg) => !msg.isTemp
+        )
+      }));
+      
       return null;
     }
   },
@@ -198,12 +236,66 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  addFriend: async (friendId) => {
+  // Friend request functions
+  sendFriendRequest: async (userId) => {
     try {
-      const res = await axiosInstance.post("/friends", { friendId });
+      const res = await axiosInstance.post("/friends/request/send", { userId });
+      toast.success("Friend request sent!");
+      await get().getSentFriendRequests();
       return res.data;
     } catch (error) {
-      console.log(error);
+      console.error("Error sending friend request:", error);
+      toast.error(error.response?.data?.error || "Failed to send friend request");
+      return null;
+    }
+  },
+
+  // Add friend function (alias for sendFriendRequest for backward compatibility)
+  addFriend: async (userId) => {
+    try {
+      return await get().sendFriendRequest(userId);
+    } catch (error) {
+      console.error("Error adding friend:", error);
+      return null;
+    }
+  },
+  
+  acceptFriendRequest: async (userId) => {
+    try {
+      const res = await axiosInstance.post("/friends/request/accept", { userId });
+      toast.success("Friend request accepted!");
+      await get().getReceivedFriendRequests();
+      await get().getFriends();
+      return res.data;
+    } catch (error) {
+      console.error("Error accepting friend request:", error);
+      toast.error(error.response?.data?.error || "Failed to accept friend request");
+      return null;
+    }
+  },
+  
+  declineFriendRequest: async (userId) => {
+    try {
+      const res = await axiosInstance.post("/friends/request/decline", { userId });
+      toast.success("Friend request declined");
+      await get().getReceivedFriendRequests();
+      return res.data;
+    } catch (error) {
+      console.error("Error declining friend request:", error);
+      toast.error(error.response?.data?.error || "Failed to decline friend request");
+      return null;
+    }
+  },
+  
+  cancelFriendRequest: async (userId) => {
+    try {
+      const res = await axiosInstance.post("/friends/request/cancel", { userId });
+      toast.success("Friend request cancelled");
+      await get().getSentFriendRequests();
+      return res.data;
+    } catch (error) {
+      console.error("Error cancelling friend request:", error);
+      toast.error(error.response?.data?.error || "Failed to cancel friend request");
       return null;
     }
   },
@@ -385,19 +477,94 @@ export const useChatStore = create((set, get) => ({
   subscribeToMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
-
+    
+    // First, unsubscribe to avoid duplicate listeners
+    get().unsubscribeToMessages();
+    
+    // Get the current chat session ID
+    const currentChatSessionId = get().selectedChatSession?._id;
+    if (!currentChatSessionId) {
+      console.log("No chat session selected, not subscribing to messages");
+      return;
+    }
+    
+    // First check if socket is connected
+    if (!socket.connected) {
+      console.log("Socket not connected, attempting to reconnect");
+      socket.connect();
+    }
+    
+    // Make sure we're in the chat session room
+    socket.emit("joinChatSession", currentChatSessionId);
+    console.log(`Joined socket room for chat session: ${currentChatSessionId}`);
+    
     // Subscribe to new messages
-    socket.on("newMessage", (message) => {
-      // Add the new message to the messages array
-      set(state => ({
-        messages: [...state.messages, message]
-      }));
-
-      // Update the chat sessions list with the new message
-      get().getRecentMessages();
+    socket.on("newMessage", (data) => {
+      console.log("Received new message via socket:", data);
+      
+      // Extract the message and chatSessionId from the data
+      const chatSessionId = data.chatSessionId || (data.message && data.message.chatSessionId);
+      const message = data.message || data;
+      
+      // Only add the message if it's for the current chat session
+      if (chatSessionId && chatSessionId.toString() === currentChatSessionId.toString()) {
+        // Make sure we're still in the same chat session when the message arrives
+        const currentSession = get().selectedChatSession;
+        if (!currentSession || currentSession._id.toString() !== currentChatSessionId.toString()) {
+          console.log('Chat session changed, ignoring message');
+          return;
+        }
+        
+        set((state) => {
+          // Make sure we don't add duplicate messages
+          const isDuplicate = state.messages.some(msg => {
+            // Check by ID if available
+            if (msg._id && message._id) {
+              return msg._id === message._id;
+            }
+            
+            // Check by content, sender and timestamp if no ID
+            return msg.text === message.text && 
+                   msg.sender && message.sender &&
+                   msg.sender._id === message.sender._id &&
+                   Math.abs(new Date(msg.createdAt || Date.now()) - new Date(message.createdAt || Date.now())) < 5000;
+          });
+          
+          // Skip if duplicate
+          if (isDuplicate) {
+            console.log("Duplicate message detected, not adding");
+            return state;
+          }
+          
+          console.log("Adding new message to state:", message);
+          return {
+            messages: [...state.messages, message]
+          };
+        });
+        
+        // Update the chat sessions list with the new message
+        set((state) => ({
+          chatSessions: state.chatSessions.map((session) => {
+            // Match by either chatSessionId or _id depending on what's available
+            const sessionId = session.chatSessionId || session._id;
+            if (sessionId && sessionId.toString() === currentChatSessionId.toString()) {
+              return {
+                ...session,
+                lastMessage: message,
+                unreadCount: (session.unreadCount || 0) + 1
+              };
+            }
+            return session;
+          }),
+        }));
+      } else {
+        console.log("Message is for a different chat session, updating recent messages only");
+        // Still update recent messages to show new message indicators
+        get().getRecentMessages();
+      }
     });
 
-    console.log("Subscribed to messages");
+    console.log(`Subscribed to messages for chat session: ${currentChatSessionId}`);
   },
 
   unsubscribeToMessages: () => {
