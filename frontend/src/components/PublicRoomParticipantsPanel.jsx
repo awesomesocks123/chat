@@ -1,12 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
-import { X, UserPlus, Flag, Ban } from "lucide-react";
+import { X, UserPlus, Flag, Ban, Check, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 
 const PublicRoomParticipantsPanel = ({ participants, onClose }) => {
   const { onlineUsers, authUser } = useAuthStore();
-  const { addFriend, blockUser, reportUser } = useChatStore();
+  const { 
+    sendFriendRequest, 
+    blockUser, 
+    reportUser, 
+    friends,
+    receivedFriendRequests,
+    sentFriendRequests,
+    getReceivedFriendRequests,
+    getSentFriendRequests
+  } = useChatStore();
   const [selectedUser, setSelectedUser] = useState(null);
   const [reportReason, setReportReason] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
@@ -22,13 +31,33 @@ const PublicRoomParticipantsPanel = ({ participants, onClose }) => {
   
   // Current user should always be shown first and online
   const currentUser = participants.find(p => p._id === authUser._id);
+  
+  useEffect(() => {
+    // Load friend requests when component mounts
+    getReceivedFriendRequests();
+    getSentFriendRequests();
+  }, [getReceivedFriendRequests, getSentFriendRequests]);
+  
+  // Helper function to check if a user is a friend
+  const isFriend = (userId) => {
+    return friends.some(friend => friend._id === userId);
+  };
+  
+  // Helper function to check if we've sent a friend request to this user
+  const hasSentRequestTo = (userId) => {
+    return sentFriendRequests.some(request => request._id === userId);
+  };
+  
+  // Helper function to check if we've received a friend request from this user
+  const hasReceivedRequestFrom = (userId) => {
+    return receivedFriendRequests.some(request => request._id === userId);
+  };
 
-  const handleAddFriend = async (userId) => {
+  const handleSendFriendRequest = async (userId) => {
     try {
-      await addFriend(userId);
-      toast.success("Friend request sent!");
+      await sendFriendRequest(userId);
     } catch (error) {
-      toast.error("Failed to send friend request");
+      // Error handling is done in the store function
     }
   };
 
@@ -75,7 +104,10 @@ const PublicRoomParticipantsPanel = ({ participants, onClose }) => {
         </div>
         <div>
           <p className="font-medium">
-            {participant.fullName} {isCurrentUser && "(You)"}
+            {isCurrentUser || isFriend(participant._id) 
+              ? participant.fullName 
+              : participant.username || participant.fullName} 
+            {isCurrentUser && "(You)"}
           </p>
           <p className="text-xs text-base-content/70">
             {participant.email || "No email"}
@@ -85,13 +117,27 @@ const PublicRoomParticipantsPanel = ({ participants, onClose }) => {
       
       {!isCurrentUser && (
         <div className="flex gap-2">
-          <button 
-            className="btn btn-sm btn-outline btn-primary" 
-            onClick={() => handleAddFriend(participant._id)}
-            title="Add Friend"
-          >
-            <UserPlus size={16} />
-          </button>
+          {isFriend(participant._id) ? (
+            <span className="badge badge-success gap-1">
+              <Check size={12} /> Friend
+            </span>
+          ) : hasReceivedRequestFrom(participant._id) ? (
+            <span className="badge badge-warning gap-1">
+              <Clock size={12} /> Request Received
+            </span>
+          ) : hasSentRequestTo(participant._id) ? (
+            <span className="badge badge-info gap-1">
+              <Clock size={12} /> Request Sent
+            </span>
+          ) : (
+            <button 
+              className="btn btn-sm btn-outline btn-primary" 
+              onClick={() => handleSendFriendRequest(participant._id)}
+              title="Send Friend Request"
+            >
+              <UserPlus size={16} />
+            </button>
+          )}
           <button 
             className="btn btn-sm btn-outline btn-warning" 
             onClick={() => openReportModal(participant)}

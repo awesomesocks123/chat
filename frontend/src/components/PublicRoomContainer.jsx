@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePublicRoomStore } from "../store/usePublicRoomStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { useChatStore } from "../store/useChatStore";
 import PublicRoomHeader from "./PublicRoomHeader";
 import PublicRoomMessageInput from "./PublicRoomMessageInput";
 import MessagesSkeleton from "./MessagesSkeleton";
@@ -19,8 +20,14 @@ const PublicRoomContainer = ({ toggleSidebar }) => {
   } = usePublicRoomStore();
   
   const { authUser } = useAuthStore();
+  const { friends } = useChatStore();
   const messagesEndRef = useRef(null);
   const [showParticipants, setShowParticipants] = useState(false);
+  
+  // Helper function to check if a user is a friend
+  const isFriend = (userId) => {
+    return friends.some(friend => friend._id === userId);
+  };
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -127,7 +134,9 @@ const PublicRoomContainer = ({ toggleSidebar }) => {
                       </div>
                     </div>
                     <div className="chat-header">
-                      {message.sender.fullName || "User"}
+                      {isCurrentUser || isFriend(message.sender._id) 
+                        ? message.sender.fullName || "User"
+                        : message.sender.username || message.sender.fullName || "User"}
                       <time className="text-xs opacity-50 ml-1">
                         {message.createdAt
                           ? formatDistanceToNow(new Date(message.createdAt), {
