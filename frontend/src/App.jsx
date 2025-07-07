@@ -14,6 +14,7 @@ import { useThemeStore } from "./store/useThemeStore.js";
 import { HelpPage } from "./pages/HelpPage";
 import ExplorePage from "./pages/ExplorePage.jsx";
 import PublicRoomPage from "./pages/PublicRoomPage.jsx";
+import FriendRequestsPage from "./pages/FriendRequestsPage.jsx";
 
 function App() {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
@@ -47,6 +48,10 @@ function App() {
           element={!authUser ? <LoginPage /> : <Navigate to="/" />}
         />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route
+          path="/friend-requests"
+          element={authUser ? <FriendRequestsPage /> : <Navigate to="/login" />}
+        />
         <Route
           path="/profile"
           element={authUser ? <ProfilePage /> : <Navigate to="/login" />}

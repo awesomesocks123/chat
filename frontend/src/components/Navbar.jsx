@@ -47,6 +47,10 @@ export const Navbar = () => {
                   <Compass className="w-5 h-5" />
                   <span className="hidden md:inline ml-1">Explore</span>
                 </Link>
+                <Link to={"/profile"} className={`btn btn-sm btn-ghost`}>
+                  <User className="w-5 h-5" />
+                  <span className="hidden md:inline ml-1">Profile</span>
+                </Link>
                 <Link to={"/"} className={`btn btn-sm btn-ghost`}>
                   <MessageSquare className="w-5 h-5" />
                   <span className="hidden md:inline ml-1">Chat</span>
