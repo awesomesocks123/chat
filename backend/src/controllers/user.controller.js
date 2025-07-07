@@ -9,7 +9,7 @@ export const getUserRecentMessages = async (req, res) => {
     const user = await User.findById(userId)
       .populate({
         path: "recentMessages.otherUser",
-        select: "fullName profilePic"
+        select: "fullName username profilePic"
       });
     
     if (!user) {

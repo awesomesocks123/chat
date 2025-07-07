@@ -78,7 +78,7 @@ export const joinRoom = async (req, res) => {
             if (req.io) {
                 req.io.to(roomId).emit("userJoined", {
                     userId,
-                    username: req.user.fullName,
+                    username: req.user.username, // Use username instead of fullName
                     roomId,
                 });
             }
@@ -184,7 +184,7 @@ export const sendMessageToRoom = async (req, res) => {
 
             // Populate the sender details for the response
             const populatedMessage = await Message.findById(newMessage._id)
-                .populate("sender", "fullName profilePic")
+                .populate("sender", "fullName username profilePic")
                 .lean();
 
             console.log(`Emitting newRoomMessage event to room ${roomId}`);
@@ -228,7 +228,7 @@ export const getRoomMessages = async (req, res) => {
 
         // Get messages for this room from the Message model
         const messages = await Message.find({ roomId })
-            .populate("sender", "fullName profilePic")
+            .populate("sender", "fullName username profilePic")
             .sort({ createdAt: 1 })
             .lean();
 
@@ -245,7 +245,7 @@ export const getRoomParticipants = async (req, res) => {
         const { roomId } = req.params;
         
         // Find the room and populate the participants field
-        const room = await PublicRoom.findById(roomId).populate("participants", "fullName profilePic email");
+        const room = await PublicRoom.findById(roomId).populate("participants", "fullName username profilePic email");
         
         if (!room) {
             return res.status(404).json({ error: `Room not found` });

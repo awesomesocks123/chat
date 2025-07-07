@@ -35,6 +35,7 @@ export const signup = async (req, res) => {
         user: {
           _id: newUser._id,
           fullName: newUser.fullName,
+          username: newUser.username,
           email: newUser.email,
           profilePic: newUser.profilePic,
         },
@@ -68,6 +69,7 @@ export const login = async (req, res) => {
       user: {
         _id: user._id,
         fullName: user.fullName,
+        username: user.username,
         email: user.email,
         profilePic: user.profilePic,
       },
