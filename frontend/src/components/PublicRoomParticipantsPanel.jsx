@@ -101,9 +101,6 @@ const PublicRoomParticipantsPanel = ({ participants, onClose }) => {
               : participant.username || participant.fullName} 
             {isCurrentUser && "(You)"}
           </p>
-          <p className="text-xs text-base-content/70">
-            {participant.email || "No email"}
-          </p>
         </div>
       </div>
       

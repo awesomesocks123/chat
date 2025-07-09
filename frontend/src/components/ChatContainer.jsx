@@ -36,6 +36,7 @@ const ChatContainer = ({ toggleSidebar }) => {
     if (selectedChatSession && selectedChatSession._id) {
       // If we have a selected chat session, get messages for it
       console.log("Loading messages for chat session:", selectedChatSession._id);
+      console.log("Selected user:", selectedUser);
       getMessages(selectedChatSession._id);
       
       // Wait a short time to ensure messages are loaded before subscribing
@@ -52,7 +53,7 @@ const ChatContainer = ({ toggleSidebar }) => {
     }
     // We no longer try to get messages using just the selectedUser
     // This was causing confusion between user IDs and chat session IDs
-  }, [selectedChatSession, getMessages, subscribeToMessages, unsubscribeToMessages]);
+  }, [selectedChatSession, selectedUser, getMessages, subscribeToMessages, unsubscribeToMessages]);
 
   // Loading state for private chat
   if (isMessagesLoading) {
@@ -112,7 +113,15 @@ const ChatContainer = ({ toggleSidebar }) => {
                 </div>
               )}
               <div className="chat-header mb-1">
-                {!isSent && <span className="text-xs font-bold">{(message.sender && isFriend(message.sender._id) ? message.sender.fullName : message.sender?.username) || "Unknown User"}</span>}
+                {!isSent && (
+                  <span className="text-xs font-bold">
+                    {message.sender ? 
+                      (isFriend(message.sender._id) ? 
+                        message.sender.fullName : 
+                        (message.sender.username || selectedUser?.username || "User")) : 
+                      "Unknown User"}
+                  </span>
+                )}
               </div>
               <div className={`chat-bubble ${isSent ? "chat-bubble-primary" : ""}`}>
                 {message.image && (

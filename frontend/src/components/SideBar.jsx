@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import { Users, MessagesSquare, Shuffle, Trash2, MessageSquare, LogOut, UserPlus, Bell, Check, X } from "lucide-react";
 import FriendRequests from "./FriendRequests";
 
-// Simple function to format time ago
+// Enhanced function to format time ago
 const formatTimeAgo = (date) => {
   // Check if date is valid
   if (!date || isNaN(date.getTime())) {
@@ -19,7 +19,7 @@ const formatTimeAgo = (date) => {
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
 
-    if (diffInSeconds < 60) return "just now";
+    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
 
     const diffInMinutes = Math.floor(diffInSeconds / 60);
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
@@ -397,7 +397,7 @@ const SideBar = ({ toggleSidebar }) => {
                     >
                       <div className="flex items-center gap-2">
                         <div className="truncate">
-                          <p className="font-medium text-sm">{user.fullName}</p>
+                          <p className="font-medium text-sm">{user.username}</p>
                         </div>
                       </div>
                       <div className="flex gap-1">
@@ -496,7 +496,7 @@ const SideBar = ({ toggleSidebar }) => {
                 return (
                   <div key={recentMsg.chatSessionId}>
                     <div
-                      className={`flex items-center gap-3 p-2 rounded-lg hover:bg-base-200 ${isSelected ? "bg-base-200" : ""}`}
+                      className={`flex items-center gap-2 p-2 rounded-lg hover:bg-base-200 ${isSelected ? "bg-base-200" : ""}`}
                     >
                       <div 
                         className="flex-1 flex items-center gap-3 cursor-pointer"
@@ -507,21 +507,21 @@ const SideBar = ({ toggleSidebar }) => {
                           }
                         }}
                       >
-                        <div className="avatar">
-                          <div className="w-12 rounded-full">
+                        <div className="avatar relative">
+                          <div className="w-10 rounded-full">
                             <img
                               src={otherUser.profilePic || "/avatar.png"}
                               alt={otherUser.fullName || "User"}
                             />
                           </div>
+                          {otherUser._id && Array.isArray(onlineUsers) && onlineUsers.includes(otherUser._id) && (
+                            <div className="status status-sm status-success absolute bottom-0 right-0 border-2 border-base-100" />
+                          )}
                         </div>
                         <div className="flex flex-col gap-1 flex-1 min-w-0">
                           <div className="flex items-center justify-between w-full">
-                            <div className="font-medium truncate flex items-center gap-2">
+                            <div className="font-medium truncate max-w-[70%]">
                               {isFriend(otherUser._id) ? otherUser.fullName : otherUser.username || "User"}
-                              {otherUser._id && Array.isArray(onlineUsers) && onlineUsers.includes(otherUser._id) && (
-                                <div className="status status-lg status-success" />
-                              )}
                             </div>
                             {recentMsg.unreadCount > 0 && (
                               <div className="badge badge-sm badge-primary">{recentMsg.unreadCount}</div>
@@ -532,11 +532,11 @@ const SideBar = ({ toggleSidebar }) => {
                               <p className="text-xs text-base-content/70 truncate">
                                 {recentMsg.lastMessage.text || "Sent an image"}
                               </p>
-                              <div className="text-xs text-base-content/50 whitespace-nowrap ml-1">
+                              <div className="text-xs text-base-content/50 whitespace-nowrap ml-1 min-w-[45px] text-right">
                                 {recentMsg.lastMessage.createdAt &&
                                 !isNaN(new Date(recentMsg.lastMessage.createdAt))
                                   ? formatTimeAgo(new Date(recentMsg.lastMessage.createdAt))
-                                  : "Just now"}
+                                  : "now"}
                               </div>
                             </div>
                           )}
