@@ -396,14 +396,6 @@ const SideBar = ({ toggleSidebar }) => {
                       className="flex items-center justify-between p-2 bg-base-200 rounded-lg"
                     >
                       <div className="flex items-center gap-2">
-                        <div className="avatar">
-                          <div className="w-8 rounded-full">
-                            <img 
-                              src={user.profilePic || "/default-avatar.png"} 
-                              alt={user.fullName}
-                            />
-                          </div>
-                        </div>
                         <div className="truncate">
                           <p className="font-medium text-sm">{user.fullName}</p>
                         </div>
@@ -590,11 +582,6 @@ const SideBar = ({ toggleSidebar }) => {
                         }
                       }}
                     >
-                      <div className="avatar placeholder">
-                        <div className="bg-neutral text-neutral-content rounded-full w-10">
-                          <span>{room.name.charAt(0).toUpperCase()}</span>
-                        </div>
-                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between">
                           <h3 className={`font-medium truncate ${isActive ? "text-primary-content" : ""}`}>
@@ -610,9 +597,6 @@ const SideBar = ({ toggleSidebar }) => {
                             {lastMessage.sender?.username || "Unknown"}: {lastMessage.text}
                           </p>
                         )}
-                        <p className={`text-xs truncate ${isActive ? "text-primary-content/60" : "text-base-content/50"}`}>
-                          {room.description}
-                        </p>
                       </div>
                     </div>
                     <button 

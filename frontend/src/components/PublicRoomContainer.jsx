@@ -125,17 +125,9 @@ const PublicRoomContainer = ({ toggleSidebar }) => {
                     key={message._id}
                     className={`chat ${isCurrentUser ? "chat-end" : "chat-start"}`}
                   >
-                    <div className="chat-image avatar">
-                      <div className="w-10 rounded-full">
-                        <img
-                          alt={message.sender.fullName || "User"}
-                          src={message.sender.profilePic || "/default-avatar.png"}
-                        />
-                      </div>
-                    </div>
                     <div className="chat-header">
                       {isCurrentUser || isFriend(message.sender._id) 
-                        ? message.sender.fullName || "User"
+                        ? "Me" || "User"
                         : message.sender.username || message.sender.fullName || "User"}
                       <time className="text-xs opacity-50 ml-1">
                         {message.createdAt

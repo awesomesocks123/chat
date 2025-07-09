@@ -94,14 +94,6 @@ const PublicRoomParticipantsPanel = ({ participants, onClose }) => {
   const ParticipantItem = ({ participant, isCurrentUser }) => (
     <div className="flex items-center justify-between p-2 hover:bg-base-200 rounded-lg">
       <div className="flex items-center gap-3">
-        <div className="avatar">
-          <div className="w-10 rounded-full">
-            <img
-              src={participant.profilePic || "/default-avatar.png"}
-              alt={participant.fullName}
-            />
-          </div>
-        </div>
         <div>
           <p className="font-medium">
             {isCurrentUser || isFriend(participant._id) 
