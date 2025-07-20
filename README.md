@@ -5,10 +5,21 @@ A modern real-time chat application with private messaging, public rooms, and so
 ## Preface
 This project is a revamp of my capstone project from 2024. I have taken out some features to make it more user-friendly and less complex. And also updated the UI to be more modern and user-friendly. I will have a demo for the app on linked here, and the new demo for this app here. The point of this revamp was to refresh my skills and reflect on the project from team and individual perspectives. I will be referring to the original project for some of the design, manual and documentation. These are also all available on GitHub on here with all our original documentations via PDF in this repository.
 
-## Chamo v1 Original Demo Video
+[![Chamo v1 Original Demo Video](https://img.youtube.com/vi/ZOy6tygGEkw/0.jpg)](https://www.youtube.com/watch?v=ZOy6tygGEkw)
 
+[![Chamo v2 Demo Video](https://img.youtube.com/vi/ZOy6tygGEkw/0.jpg)](https://www.youtube.com/watch?v=ZOy6tygGEkw)
 
-## Chamo v2 Demo Video
+## Original Documentation for Chamo v1
+
+The following documents are from the original Chamo v1 project and provide detailed information about the design, requirements, and implementation of the application:
+
+- [Design Document](./Documents/Design_Version_3.0.pdf) - Detailed design specifications and architecture
+- [Developer Guide](./Documents/Developer_Guide.pdf) - Guide for developers working on the project
+- [Requirements Document](./Documents/Requirements_Version_3.0_.pdf) - Functional and non-functional requirements
+- [Testing Specifications](./Documents/Testing%20Specifications%20Version%203.pdf) - Testing methodology and test cases
+- [User Manual](./Documents/User_Manual.pdf) - Instructions for end users
+- [Weekly Work Log](./Documents/weekly%20work_logs%20.pdf) - Development progress tracking
+
 
 
 ## Table of Contents
@@ -17,6 +28,7 @@ This project is a revamp of my capstone project from 2024. I have taken out some
 - [Features](#features)
 - [Architecture](#architecture)
 - [Development Journey](#development-journey)
+- [Original Documentation](#original-documentation)
   - [Phase 1: Authentication & User Interface](#phase-1-authentication--user-interface)
   - [Phase 2: Messaging & Real-time Communication](#phase-2-messaging--real-time-communication)
   - [Phase 3: Chat Sessions & Friend Management](#phase-3-chat-sessions--friend-management)
