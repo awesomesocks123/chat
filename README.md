@@ -1,6 +1,15 @@
-# AwesomeSocks Chat Application
+# Chamo v2 Application
 
 A modern real-time chat application with private messaging, public rooms, and social features.
+
+## Preface
+This project is a revamp of my capstone project from 2024. I have taken out some features to make it more user-friendly and less complex. And also updated the UI to be more modern and user-friendly. I will have a demo for the app on linked here, and the new demo for this app here. The point of this revamp was to refresh my skills and reflect on the project from team and individual perspectives. I will be referring to the original project for some of the design, manual and documentation. These are also all available on GitHub on here with all our original documentations via PDF in this repository.
+
+## Chamo v1 Original Demo Video
+
+
+## Chamo v2 Demo Video
+
 
 ## Table of Contents
 
@@ -21,7 +30,7 @@ A modern real-time chat application with private messaging, public rooms, and so
 
 ## Overview
 
-AwesomeSocks Chat is a full-featured chat application that allows users to communicate in real-time through both private messages and public chat rooms. The application supports user authentication, friend requests, random chat matching, and public room categorization.
+Chamo is an anonymous chat application that allows users to communicate in real-time through both private messages and public chat rooms. The application supports user authentication, friend requests, random chat matching, and public room categorization.
 
 ## Features
 
@@ -60,26 +69,26 @@ The frontend is built with React and uses a modern component-based architecture:
 
 ## Development Journey
 
-The development of AwesomeSocks Chat Application followed a structured approach, evolving from basic authentication to a full-featured social chat platform. Below is a chronological journey through the development process based on the commit history.
+The development of Chamo followed a structured approach, evolving from basic authentication to a full-featured social chat platform.
 
 ### Phase 1: Authentication & User Interface
 
 The initial phase focused on setting up the project structure and implementing core authentication features:
 
-1. **Project Setup** (Weeks 6-8)
+1. **Project Setup**
    - Initialized the project repository
    - Set up the backend with Node.js, Express, and MongoDB
    - Created basic message routes and controllers
    - Implemented Tailwind CSS for frontend styling
    - Created page structure and navigation
 
-2. **Authentication System** (Week 5)
+2. **Authentication System**
    - Implemented signup functionality with account creation
    - Added login/logout functionality with proper session management
    - Created navbar with authentication controls
    - Developed profile modal for user information display
 
-3. **User Profile & Theming** (Weeks 3-4)
+3. **User Profile & Theming**
    - Fixed profile picture upload and storage in database
    - Implemented theme system with multiple color schemes
    - Added "Chamo" color theme option
@@ -89,24 +98,24 @@ The initial phase focused on setting up the project structure and implementing c
 
 This phase focused on implementing the core messaging functionality and real-time updates:
 
-1. **Chat UI Components** (Week 3)
+1. **Chat UI Components**
    - Created sidebar component for navigation
    - Implemented chat header for conversation context
    - Designed message input UI with send button
    - Fixed message display and formatting issues
 
-2. **Basic Messaging** (Week 3)
+2. **Basic Messaging**
    - Implemented database storage for messages
    - Created API endpoints for sending and retrieving messages
    - Displayed chat conversations in the UI
 
-3. **Real-time Communication** (Weeks 2-3)
+3. **Real-time Communication**
    - Integrated Socket.IO for real-time chat functionality
    - Implemented user disconnect handling
    - Added online user tracking by mapping userIds to socketIds
    - Fixed UI issues with message input borders
 
-4. **Enhanced Chat Experience** (Week 2)
+4. **Enhanced Chat Experience**
    - Redesigned chat UI with improved message bubbles
    - Added image upload validation
    - Implemented online status indicators
@@ -116,21 +125,21 @@ This phase focused on implementing the core messaging functionality and real-tim
 
 This phase focused on restructuring the chat system and adding social features:
 
-1. **Chat Session Redesign** (Week 2)
+1. **Chat Session Redesign**
    - Implemented chat session model for better organization
    - Added bidirectional chat matching functionality
    - Fixed Lucide icon imports for better UI consistency
    - Sorted messages in the sidebar by recency
    - Added mobile view support and fixed icon issues
 
-2. **User Relationship Features** (Week 2)
+2. **User Relationship Features**
    - Implemented user blocking functionality
    - Added chat deletion capability
    - Created help center and dropdown components
    - Fixed help center rendering issues
    - Completed help page implementation
 
-3. **UI Refinements** (Week 2)
+3. **UI Refinements**
    - Fixed default checked states in settings
    - Disabled iOS and Android options (platform limitations)
    - Improved sign-in button visibility based on authentication state
@@ -140,7 +149,7 @@ This phase focused on restructuring the chat system and adding social features:
 
 This phase expanded the application with public chat rooms and enhanced social features:
 
-1. **Public Room Foundation** (Days 12-13)
+1. **Public Room Foundation**
    - Created explore page frontend for room discovery
    - Updated color schemes for better visual hierarchy
    - Developed database models for public rooms
@@ -148,14 +157,14 @@ This phase expanded the application with public chat rooms and enhanced social f
    - Created controller for public room operations
    - Developed migration scripts for public room data
 
-2. **Public Room Implementation** (Days 10-11)
+2. **Public Room Implementation**
    - Implemented public chat rooms with real-time messaging
    - Fixed sidebar chat session updates for real-time message display
    - Created participants panel showing online/offline status
    - Integrated participants panel into public room container
    - Standardized chat bubbles using DaisyUI components
 
-3. **System Integration** (Day 10)
+3. **System Integration**
    - Added socket middleware to attach Socket.IO instance to requests
    - Created public room components and store for real-time messaging
    - Updated backend for public room messaging and socket integration
@@ -167,14 +176,14 @@ This phase expanded the application with public chat rooms and enhanced social f
 
 The final phase focused on improving the user experience and fixing issues:
 
-1. **UI/UX Improvements** (Day 9)
+1. **UI/UX Improvements**
    - Restructured sidebar navigation with better button layout
    - Added divider lines between chat items for clarity
    - Fixed dropdown behavior for better interaction
    - Added friend request status tracking in ChatHeader
    - Improved friend request UI with compact icon buttons
 
-2. **Bug Fixes & Optimizations** (Days 8-9)
+2. **Bug Fixes & Optimizations**
    - Fixed message duplication in chat sessions by improving socket room handling
    - Enhanced friend request system for better persistence and status tracking
    - Updated store implementation to prevent message duplication
@@ -190,13 +199,53 @@ The final phase focused on improving the user experience and fixing issues:
 
 ## Screenshots
 
-[Insert screenshots of the login page]
+### Authentication & User Interface
 
-[Insert screenshots of the chat interface]
+![Login Page](./screenshots/Login%20Page.png)
 
-[Insert screenshots of the public rooms]
+![Default Logged In Page](./screenshots/default%20logged%20in%20page.png)
 
-[Insert screenshots of the explore page]
+![Profile Edit Page](./screenshots/profile%20edit%20page.png)
+
+### Chat Interface
+
+![Chat Page](./screenshots/chat%20page.png)
+
+![Chat Page Without Chat Opened](./screenshots/chat%20page%20without%20chat%20opened.png)
+
+![Realtime Chatting](./screenshots/realtime%20chatting.png)
+
+![Side by Side Chatting Realtime](./screenshots/side%20by%20side%20chatting%20realtime.png)
+
+### Public Rooms & Social Features
+
+![Explore Page](./screenshots/explore%20page.png)
+
+![Search Function in Explore](./screenshots/search%20function%20in%20explore.png)
+
+![Changing Sidebar Rooms](./screenshots/changing%20sidebar%20rooms.png)
+
+![Chatroom Participant Page](./screenshots/chatroom%20participant%20page.png)
+
+![Friends Added](./screenshots/friends%20added.png)
+
+![User Report Block Delete](./screenshots/user%20report%20block%20delete.png)
+
+### Help & Settings
+
+![Help Center Main Menu](./screenshots/help%20center%20main%20menu.png)
+
+![FAQ](./screenshots/FAQ.png)
+
+![Privacy Policy](./screenshots/privacy%20policy.png)
+
+### Themes
+
+![Theme Select Page](./screenshots/theme%20select%20page.png)
+
+![DaisyUI Theme](./screenshots/daisy%20ui%20theme%20.png)
+
+![Dark Theme](./screenshots/dark%20theme.png)
 
 ## Demo
 
@@ -264,61 +313,3 @@ npm install
 # Start the development server
 npm run dev
 ```
-
-## Changelog
-
-### v1.0.0 (Initial Release - Weeks 5-6)
-- Basic user authentication (signup, login, logout)
-- User profiles with customizable profile pictures
-- Navigation system with navbar and basic pages
-- Theme customization with multiple color options
-
-### v1.1.0 (Messaging Foundation - Weeks 3-4)
-- Basic one-on-one messaging
-- Chat UI components (sidebar, chat header, message input)
-- Message storage and retrieval from database
-- Settings page with theme customization
-- Added "Chamo" color theme option
-
-### v1.2.0 (Real-time Communication - Week 3)
-- Socket.IO integration for real-time messaging
-- Online status indicators
-- User connection/disconnection handling
-- Message anchoring for proper display
-- Fixed UI issues with message input and display
-
-### v1.3.0 (Chat Session Redesign - Week 2)
-- Implemented chat session model for better organization
-- Added bidirectional chat matching
-- Improved message sorting in sidebar
-- Enhanced UI with better message bubbles
-- Added mobile view support
-- Fixed Lucide icon imports
-
-### v1.4.0 (User Relationship Features - Week 2)
-- Implemented user blocking functionality
-- Added chat deletion capability
-- Created help center with documentation
-- Enhanced profile management options
-- Fixed help center rendering issues
-- Improved sign-in button visibility based on authentication state
-
-### v1.5.0 (Public Rooms - Days 10-13)
-- Added public chat rooms with categories (Gaming, Music, Movie, Random)
-- Created Explore page for browsing and searching rooms
-- Implemented room joining/leaving functionality
-- Added participant panels showing online/offline status
-- Standardized chat bubbles using DaisyUI components
-- Updated color schemes for better visual hierarchy
-
-### v1.6.0 (Social Features & Refinements - Days 8-9)
-- Enhanced friend request system with status tracking
-- Added dedicated Friend Requests page
-- Improved UI with better navigation and visual hierarchy
-- Fixed message duplication issues
-- Added username standardization
-- Optimized socket connection management
-- Restructured sidebar navigation with better button layout
-- Added divider lines between chat items for clarity
-- Fixed dropdown behavior for better interaction
-- Removed unnecessary avatars and email displays in UI
